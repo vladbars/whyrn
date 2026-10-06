@@ -1,7 +1,9 @@
 import React from 'react';
-import { Animated, StyleSheet, Text } from 'react-native';
+import { Platform, StyleSheet, Text, View } from 'react-native';
 import type { OverlayEntry, RenderReason } from '../types';
 import { truncate } from '../utils';
+
+export const BADGE_MAX_WIDTH = 300;
 
 interface ReasonBadgeProps {
   entry: OverlayEntry;
@@ -23,51 +25,41 @@ function reasonToLine(reason: RenderReason): string {
       }
       return 'state changed';
     case 'context':
-      return 'context';
+      return reason.detail ?? 'context';
     case 'hooks':
-      return 'hook dep changed';
+      return reason.detail ?? 'hook changed';
     case 'parent':
       return reason.detail ?? 'parent';
   }
 }
 
-export const ReasonBadge: React.FC<ReasonBadgeProps> = ({ entry }) => {
-  const layout = entry.event.layout;
-  if (!layout) return null;
-
+/** Rendered inside FlashOverlay, so it fades together with the border. */
+export function ReasonBadge({ entry }: ReasonBadgeProps): React.ReactElement {
   const label = entry.event.reasons.map(reasonToLine).join(' | ');
 
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        styles.badge,
-        {
-          left: layout.x,
-          top: Math.max(0, layout.y - 20),
-          opacity: entry.opacity,
-        },
-      ]}
-    >
+    <View pointerEvents="none" style={styles.badge}>
       <Text style={styles.text} numberOfLines={1}>
         {entry.event.componentName} — {label}
       </Text>
-    </Animated.View>
+    </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   badge: {
     position: 'absolute',
+    top: -16,
+    left: 0,
     backgroundColor: 'rgba(0, 0, 0, 0.8)',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
-    maxWidth: 300,
+    maxWidth: BADGE_MAX_WIDTH,
   },
   text: {
     color: '#fff',
     fontSize: 10,
-    fontFamily: 'monospace',
+    fontFamily: Platform.select({ ios: 'Menlo', default: 'monospace' }),
   },
 });

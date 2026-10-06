@@ -11,7 +11,7 @@
 <p align="center">
   <a href="https://www.npmjs.com/package/whyrn.dev"><img src="https://img.shields.io/npm/v/whyrn.dev.svg" alt="npm version" /></a>
   <a href="https://www.npmjs.com/package/whyrn.dev"><img src="https://img.shields.io/npm/dm/whyrn.dev.svg" alt="npm downloads" /></a>
-  <a href="https://github.com/vladbars/whyrn/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/whyrn.svg" alt="license" /></a>
+  <a href="https://github.com/vladbars/whyrn/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/whyrn.dev.svg" alt="license" /></a>
 </p>
 
 ---
@@ -49,18 +49,20 @@ It highlights re-renders **on screen**, shows the **exact reason** — which pro
 - ⚡ **Zero config** — wrap your app, done
 - 📱 **React Native first** — built for mobile, not a web port
 - 🪶 **Zero dependencies** — only React and React Native as peers
-- 🔇 **Dev only** — no-op in production, tree-shaken away
+- 🔇 **Dev only** — hard `__DEV__` guard at every entry point; zero overhead in release builds
 
 ---
 
 ## Install
 
+Install as a **dev dependency** — whyrn is a debug tool and has no place in production bundles:
+
 ```bash
-npm install whyrn.dev
+npm install -D whyrn.dev
 ```
 
 ```bash
-yarn add whyrn.dev
+yarn add -D whyrn.dev
 ```
 
 ---
@@ -157,7 +159,7 @@ The border color shifts based on render frequency in a 5-second sliding window.
 
 ## Configuration
 
-All options are passed as props. Every prop is optional.
+All options are passed as props. Every prop is optional. React Native internals (`View`, `Text`, `Pressable`, `Animated*`, `RCT*`, …) are always skipped.
 
 ```tsx
 <WhyRN
@@ -170,7 +172,7 @@ All options are passed as props. Every prop is optional.
   heatmapColdColor="#3B82F6"     // Heatmap cold color (default: #3B82F6)
   heatmapHotColor="#EF4444"      // Heatmap hot color (default: #EF4444)
   include={[/Screen/, /Card/]}   // Only track matching names (default: [])
-  exclude={[/^RN/, /^RCT/]}     // Skip matching names (default: RN internals)
+  exclude={[/^Legacy/]}          // Skip matching names (default: [])
 >
   <YourApp />
 </WhyRN>
@@ -186,7 +188,7 @@ Root provider. Wraps your app to enable visual overlays and auto-tracking.
 
 ### `withWhyRN(Component, name?)`
 
-HOC that tracks a specific component. Works with or without `<WhyRN>` — without the wrapper, it logs to console only.
+Marks a specific component as tracked and returns the same component (no wrapper). Works with or without `<WhyRN>` — without it, re-renders are logged to the console only.
 
 ### `useWhyRN(name, props)`
 
@@ -215,13 +217,25 @@ Simple hook that returns how many times the component has rendered. Optionally l
 
 ## How It Works
 
-1. `<WhyRN>` patches `React.createElement` on mount to wrap tracked components with a thin HOC
-2. The HOC stores previous props in a `useRef` and diffs on every render
-3. When a re-render is detected, it calls `measureInWindow` to get the component's screen position
+1. `<WhyRN>` subscribes to React's commit notifications through `__REACT_DEVTOOLS_GLOBAL_HOOK__` (the same channel React DevTools uses; React Native dev builds always provide it)
+2. On every commit it walks only the parts of the fiber tree that did work, and compares each re-rendered component with its previous version: props, `useState`/`useReducer` values, context values and external stores
+3. The host views each component rendered are measured with `measureInWindow`
 4. A global overlay renders an `Animated.View` border that fades out, plus a reason badge
 5. In heatmap mode, the border color is computed from the render rate in a sliding window
 
-Since we only care about **re-renders** (not the first render), patching at mount time is fine. The library is a complete no-op when `__DEV__` is false.
+Nothing in your tree is replaced or wrapped: no patched `createElement`, no patched hooks, no extra views. Layout, component identity (`child.type === Screen` checks in navigators) and hook order stay exactly as they are.
+
+**Production safety:** every entry point (`<WhyRN>`, `withWhyRN`, `useWhyRN`, `useRenderCount`) checks `__DEV__` at the top. In release builds the entire library is inert — no subscriptions, no overlays, no timers, no allocations.
+
+---
+
+## Example app
+
+[`example/`](example) is an Expo app wired to `src/` (changes hot-reload):
+
+```bash
+cd example && bun install && bunx expo start --ios
+```
 
 ---
 
@@ -252,7 +266,7 @@ Contributions are welcome! Please open an issue first to discuss what you'd like
 
 ## License
 
-MIT
+[MIT](LICENSE)
 
 ---
 

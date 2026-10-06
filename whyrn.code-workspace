@@ -1,0 +1,14 @@
+{
+	"folders": [
+		{
+			"path": "../wk/Wortkarten"
+		},
+		{
+			"path": "."
+		},
+		{
+			"path": "../locon/locon"
+		}
+	],
+	"settings": {}
+}

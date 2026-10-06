@@ -1,5 +1,4 @@
-import type { RenderEvent, RenderReason, ComponentLayout } from '../types';
-import { overlayManager } from '../overlay/OverlayManager';
+import type { RenderEvent, RenderReason } from '../types';
 import { getConfig } from '../utils';
 import { formatRenderEvent } from './logger';
 
@@ -26,13 +25,9 @@ function pruneTimestamps(record: ComponentRecord, now: number): void {
   record.timestamps = record.timestamps.filter((t) => t > cutoff);
 }
 
-export function trackRender(
-  componentName: string,
-  reasons: RenderReason[],
-  layout?: ComponentLayout
-): void {
+/** Count a re-render and log it. Without <WhyRN> mounted it still logs to the console. */
+export function recordRender(componentName: string, reasons: RenderReason[]): RenderEvent {
   const config = getConfig();
-  if (!config?.enabled) return;
 
   const now = Date.now();
   const record = getRecord(componentName);
@@ -45,14 +40,13 @@ export function trackRender(
     renderCount: record.renderCount,
     timestamp: now,
     reasons,
-    layout,
   };
 
-  if (config.logToConsole) {
+  if (config ? config.enabled && config.logToConsole : true) {
     formatRenderEvent(event);
   }
 
-  overlayManager.emit(event);
+  return event;
 }
 
 export function getRenderCount(componentName: string): number {

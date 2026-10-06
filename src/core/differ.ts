@@ -75,7 +75,8 @@ export function diffState(
 
 export function buildReasons(
   propChanges: PropChange[],
-  stateChanges: StateChange[]
+  stateChanges: StateChange[],
+  extra: RenderReason[] = []
 ): RenderReason[] {
   const reasons: RenderReason[] = [];
 
@@ -86,6 +87,8 @@ export function buildReasons(
   if (stateChanges.length > 0) {
     reasons.push({ type: 'state', stateChanges });
   }
+
+  reasons.push(...extra);
 
   if (reasons.length === 0) {
     reasons.push({ type: 'parent', detail: 'Parent re-rendered' });

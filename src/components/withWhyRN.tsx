@@ -1,67 +1,25 @@
-import React, { useRef, useCallback } from 'react';
-import { View } from 'react-native';
-import type { ComponentLayout } from '../types';
-import { diffProps, buildReasons } from '../core/differ';
-import { trackRender } from '../core/tracker';
-import { getComponentName, getConfig } from '../utils';
+import type React from 'react';
+import { getComponentName, registerForced } from '../utils';
+import { installCommitTracker } from '../core/commitTracker';
+import { IS_DEV } from '../constants';
 
-export function withWhyRN<P extends Record<string, unknown>>(
-  WrappedComponent: React.ComponentType<P>,
-  name?: string
-): React.ComponentType<P> {
-  const displayName = name ?? getComponentName(WrappedComponent as React.ComponentType<unknown>);
+const MEMO_TYPE = Symbol.for('react.memo');
 
-  const TrackedComponent = React.forwardRef<unknown, P>((props, ref) => {
-    const prevPropsRef = useRef<Record<string, unknown> | null>(null);
-    const layoutRef = useRef<ComponentLayout | undefined>(undefined);
-    const viewRef = useRef<View>(null);
-    const renderCountRef = useRef(0);
+/**
+ * Track a specific component, even outside <WhyRN> (console only in that case).
+ * Returns the same component: no wrapper, no extra views, no changed identity.
+ */
+export function withWhyRN<C extends React.ComponentType<any>>(Component: C, name?: string): C {
+  if (!IS_DEV) return Component;
 
-    renderCountRef.current++;
+  const displayName = name ?? getComponentName(Component as any);
 
-    if (renderCountRef.current > 1) {
-      const config = getConfig();
-      if (config?.enabled !== false) {
-        const propChanges = diffProps(prevPropsRef.current, props as Record<string, unknown>);
-        const reasons = buildReasons(propChanges, []);
+  let layer: any = Component;
+  while (layer && (typeof layer === 'function' || typeof layer === 'object')) {
+    registerForced(layer, displayName);
+    layer = layer.$$typeof === MEMO_TYPE ? layer.type : null;
+  }
 
-        if (viewRef.current) {
-          (viewRef.current as any).measureInWindow?.(
-            (x: number, y: number, width: number, height: number) => {
-              if (width > 0 && height > 0) {
-                layoutRef.current = { x, y, width, height };
-                trackRender(displayName, reasons, layoutRef.current);
-              } else {
-                trackRender(displayName, reasons, undefined);
-              }
-            }
-          );
-        } else {
-          trackRender(displayName, reasons, undefined);
-        }
-      }
-    }
-
-    prevPropsRef.current = { ...(props as Record<string, unknown>) };
-
-    const onLayout = useCallback(() => {
-      viewRef.current?.measureInWindow?.(
-        (x: number, y: number, width: number, height: number) => {
-          if (width > 0 && height > 0) {
-            layoutRef.current = { x, y, width, height };
-          }
-        }
-      );
-    }, []);
-
-    return (
-      <View ref={viewRef} onLayout={onLayout} collapsable={false}>
-        <WrappedComponent {...(props as P)} ref={ref} />
-      </View>
-    );
-  });
-
-  TrackedComponent.displayName = `withWhyRN(${displayName})`;
-
-  return TrackedComponent as unknown as React.ComponentType<P>;
+  installCommitTracker();
+  return Component;
 }

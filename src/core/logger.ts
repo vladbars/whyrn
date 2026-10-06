@@ -2,9 +2,11 @@ import type { RenderEvent, PropChange, StateChange } from '../types';
 import { truncate } from '../utils';
 
 function formatPropChange(change: PropChange): string {
-  const refLabel = change.referenceChanged && !change.valueChanged
-    ? ' (new reference, same value)'
-    : '';
+  const refLabel = typeof change.prev === 'function' && typeof change.next === 'function'
+    ? ' (new function reference)'
+    : change.referenceChanged && !change.valueChanged
+      ? ' (new reference, same value)'
+      : '';
   return `  prop "${change.key}" changed${refLabel}: ${truncate(change.prev)} → ${truncate(change.next)}`;
 }
 
@@ -32,10 +34,10 @@ export function formatRenderEvent(event: RenderEvent): void {
         lines.push(`  ${reason.detail ?? 'Parent re-rendered'}`);
         break;
       case 'context':
-        lines.push(`  Context value changed`);
+        lines.push(`  ${reason.detail ?? 'Context value changed'}`);
         break;
       case 'hooks':
-        lines.push(`  Hook dependency changed`);
+        lines.push(`  ${reason.detail ?? 'Hook dependency changed'}`);
         break;
     }
   }

@@ -1,6 +1,6 @@
 {
   "name": "whyrn.dev",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "See exactly why your React Native components re-render",
   "main": "lib/commonjs/index.js",
   "module": "lib/module/index.js",
@@ -17,7 +17,8 @@
   "scripts": {
     "build": "bob build",
     "typecheck": "tsc --noEmit",
-    "clean": "del-cli lib"
+    "clean": "del-cli lib",
+    "prepack": "bob build"
   },
   "keywords": [
     "react-native",

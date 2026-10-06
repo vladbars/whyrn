@@ -1,50 +1,73 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { StyleSheet, View, Animated } from 'react-native';
 import type { RenderEvent, OverlayEntry, WhyRNConfig } from '../types';
 import { overlayManager } from './OverlayManager';
 import { FlashOverlay } from './FlashOverlay';
-import { ReasonBadge } from './ReasonBadge';
 import { getHeatColor } from './Heatmap';
 import { getRecentRenderRate } from '../core/tracker';
-import { uniqueId } from '../utils';
+import { uniqueId, internalComponents } from '../utils';
+
+function entryKey(entry: OverlayEntry): string {
+  const layout = entry.event.layout;
+  return `${entry.event.componentName}@${layout?.x},${layout?.y}`;
+}
 
 interface OverlayContainerProps {
   config: WhyRNConfig;
 }
 
-export const OverlayContainer: React.FC<OverlayContainerProps> = ({ config }) => {
+// The commit tracker never inspects this subtree, so overlay updates can't
+// trigger reports about themselves (which would loop forever).
+internalComponents.add(OverlayContainer);
+
+export function OverlayContainer({ config }: OverlayContainerProps): React.ReactElement | null {
   const [entries, setEntries] = useState<OverlayEntry[]>([]);
+  const [origin, setOrigin] = useState({ x: 0, y: 0 });
+  const containerRef = useRef<View>(null);
+  const queueRef = useRef<OverlayEntry[]>([]);
+  const frameRef = useRef<number | null>(null);
 
   useEffect(() => {
-    const unsubscribe = overlayManager.subscribe((event: RenderEvent) => {
-      if (!event.layout) return;
-
-      const entry: OverlayEntry = {
-        id: uniqueId(),
-        event,
-        opacity: new Animated.Value(1),
-      };
-
+    const flush = () => {
+      frameRef.current = null;
+      const batch = queueRef.current;
+      queueRef.current = [];
+      // A newer flash for the same component and spot replaces the older one.
+      const keys = new Set(batch.map(entryKey));
       setEntries((prev) => {
-        const next = [...prev, entry];
-        if (next.length > config.maxOverlays) {
-          return next.slice(next.length - config.maxOverlays);
-        }
-        return next;
+        const next = [...prev.filter((e) => !keys.has(entryKey(e))), ...batch];
+        return next.length > config.maxOverlays
+          ? next.slice(next.length - config.maxOverlays)
+          : next;
       });
+    };
+
+    const unsubscribe = overlayManager.subscribe((event: RenderEvent) => {
+      queueRef.current.push({ id: uniqueId(), event, opacity: new Animated.Value(1) });
+      if (frameRef.current === null) frameRef.current = requestAnimationFrame(flush);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribe();
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
+      queueRef.current = [];
+    };
   }, [config.maxOverlays]);
 
   const handleComplete = useCallback((id: string) => {
     setEntries((prev) => prev.filter((e) => e.id !== id));
   }, []);
 
-  if (entries.length === 0) return null;
+  // Layouts are measured in window coordinates; this container may be offset.
+  const onLayout = useCallback(() => {
+    containerRef.current?.measureInWindow((x, y) => {
+      setOrigin((prev) => (prev.x === x && prev.y === y ? prev : { x, y }));
+    });
+  }, []);
 
   return (
-    <View style={styles.container} pointerEvents="none">
+    <View ref={containerRef} style={styles.container} pointerEvents="none" onLayout={onLayout}>
       {entries.map((entry) => {
         const color = config.heatmap
           ? getHeatColor(
@@ -55,20 +78,19 @@ export const OverlayContainer: React.FC<OverlayContainerProps> = ({ config }) =>
           : config.flashColor;
 
         return (
-          <React.Fragment key={entry.id}>
-            <FlashOverlay
-              entry={entry}
-              color={color}
-              duration={config.flashDuration}
-              onComplete={handleComplete}
-            />
-            <ReasonBadge entry={entry} />
-          </React.Fragment>
+          <FlashOverlay
+            key={entry.id}
+            entry={entry}
+            origin={origin}
+            color={color}
+            duration={config.flashDuration}
+            onComplete={handleComplete}
+          />
         );
       })}
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
   container: {
