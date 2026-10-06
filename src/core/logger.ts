@@ -1,5 +1,5 @@
 import type { RenderEvent, PropChange, StateChange } from '../types';
-import { truncate } from '../utils';
+import { getConfig, truncate } from '../utils';
 import { formatLocation, resolveSource } from './source';
 import type { SourceHint } from './source';
 
@@ -182,7 +182,7 @@ function flush(): void {
         fresh.forEach((s, i) => {
           lines.push(`  ${describe(s)}`);
           const location = locations[i];
-          if (location) lines.push(`    at ${formatLocation(location)}`);
+          if (location) lines.push(`    at ${formatLocation(location, getConfig()?.editor)}`);
           for (const [cause, n] of s.causes) {
             lines.push(`    ${n > 1 ? `${n}× ` : ''}${cause}`);
           }

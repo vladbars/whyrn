@@ -15,6 +15,7 @@ export function WhyRN({
   enabled = DEFAULT_CONFIG.enabled,
   report = DEFAULT_CONFIG.report,
   criticalMs = DEFAULT_CONFIG.criticalMs,
+  editor = DEFAULT_CONFIG.editor,
   trackHooks = DEFAULT_CONFIG.trackHooks,
   logToConsole = DEFAULT_CONFIG.logToConsole,
   heatmap = DEFAULT_CONFIG.heatmap,
@@ -38,6 +39,7 @@ export function WhyRN({
       enabled: isEnabled,
       report,
       criticalMs,
+      editor,
       trackHooks,
       logToConsole,
       heatmap,
@@ -51,7 +53,7 @@ export function WhyRN({
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      isEnabled, report, criticalMs, trackHooks, logToConsole, heatmap,
+      isEnabled, report, criticalMs, editor, trackHooks, logToConsole, heatmap,
       flashDuration, flashColor, heatmapColdColor, heatmapHotColor,
       maxOverlays, includeKey, excludeKey,
     ]

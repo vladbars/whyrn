@@ -20,6 +20,7 @@ export const DEFAULT_CONFIG: WhyRNConfig = {
   enabled: IS_DEV,
   report: 'critical',
   criticalMs: 16,
+  editor: 'vscode',
   trackHooks: true,
   logToConsole: true,
   heatmap: false,

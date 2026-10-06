@@ -6,6 +6,7 @@
 // parent where the unstable prop is created — exactly where the fix goes.
 
 import { NativeModules } from 'react-native';
+import type { EditorOption } from '../types';
 
 export interface SourceLocation {
   file: string;
@@ -119,15 +120,34 @@ export function openInEditor(location: SourceLocation): void {
   }).catch(() => {});
 }
 
+function editorUrl(editor: EditorOption, location: SourceLocation): string | undefined {
+  if (typeof editor === 'function') return editor(location);
+  const { file, lineNumber, column } = location;
+  const path = file.startsWith('/') ? file : `/${file.replace(/\\/g, '/')}`;
+  const position = `${lineNumber}${column !== undefined ? `:${column}` : ''}`;
+  switch (editor) {
+    case 'vscode':
+    case 'cursor':
+    case 'windsurf':
+    case 'zed':
+      return `${editor}://file${encodeURI(path)}:${position}`;
+    case 'webstorm':
+    case 'idea':
+      return `${editor}://open?file=${encodeURIComponent(file)}&line=${lineNumber}`;
+    default:
+      return undefined;
+  }
+}
+
 /**
- * A clickable location for the console. React Native DevTools knows original
- * files under the dev server origin (source map paths are resolved against the
- * bundle URL), so `http://host:8081/abs/path/File.tsx:12:3` opens the file in
- * the Sources panel — and its "Open in external editor" button opens your IDE.
+ * A clickable location for the console. The React Native DevTools console
+ * links any `scheme://` URL, so an editor URL (`vscode://file/…:12:3`) opens the
+ * file directly; the browser asks once to allow the editor. `editor: 'none'`
+ * prints a plain `file:line:col`, which terminals link instead.
  */
-export function formatLocation(location: SourceLocation): string {
-  const position = `${location.lineNumber}${location.column !== undefined ? `:${location.column}` : ''}`;
-  const server = getDevServer();
-  const file = location.file.startsWith('/') && server ? `${server}${encodeURI(location.file)}` : location.file;
-  return `${file}:${position}`;
+export function formatLocation(location: SourceLocation, editor: EditorOption = 'vscode'): string {
+  return (
+    editorUrl(editor, location) ??
+    `${location.file}:${location.lineNumber}${location.column !== undefined ? `:${location.column}` : ''}`
+  );
 }

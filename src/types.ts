@@ -1,5 +1,10 @@
 import type { ReactNode } from 'react';
 
+export type EditorName = 'vscode' | 'cursor' | 'windsurf' | 'zed' | 'webstorm' | 'idea' | 'none';
+export type EditorOption =
+  | EditorName
+  | ((location: { file: string; lineNumber: number; column?: number }) => string);
+
 export type ChangeType = 'props' | 'state' | 'hooks' | 'context' | 'parent';
 
 /**
@@ -86,6 +91,12 @@ export interface WhyRNConfig {
   report: 'critical' | 'avoidable' | 'all';
   /** Wasted render time per second (ms) that makes a component critical. */
   criticalMs: number;
+  /**
+   * How source links in the console are written. Editor URL schemes open the
+   * file straight from the React Native DevTools console (the browser asks
+   * once to allow it). `'none'` prints a plain path.
+   */
+  editor: EditorOption;
   trackHooks: boolean;
   logToConsole: boolean;
   heatmap: boolean;
