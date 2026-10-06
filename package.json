@@ -1,7 +1,7 @@
 {
   "name": "whyrn.dev",
-  "version": "0.2.1",
-  "description": "See exactly why your React Native components re-render",
+  "version": "0.2.2",
+  "description": "See exactly why your React Native components re-render — on screen and in Metro. Ships an agent skill for Claude Code and Codex.",
   "main": "lib/commonjs/index.js",
   "module": "lib/module/index.js",
   "types": "lib/typescript/index.d.ts",
@@ -10,6 +10,7 @@
   "files": [
     "src",
     "lib",
+    "skills",
     "!**/__tests__",
     "!**/__fixtures__",
     "!**/__mocks__"
@@ -28,7 +29,17 @@
     "performance",
     "profiler",
     "devtools",
-    "why-did-you-render"
+    "why-did-you-render",
+    "react-native-performance",
+    "rerender",
+    "why-did-you-render-alternative",
+    "expo",
+    "fabric",
+    "hooks",
+    "agent-skill",
+    "claude-code",
+    "codex",
+    "ai-agents"
   ],
   "repository": {
     "type": "git",
@@ -39,7 +50,7 @@
   "bugs": {
     "url": "https://github.com/vladbars/whyrn/issues"
   },
-  "homepage": "https://github.com/vladbars/whyrn#readme",
+  "homepage": "https://whyrn.dev",
   "peerDependencies": {
     "react": ">=18.0.0",
     "react-native": ">=0.70.0"

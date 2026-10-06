@@ -190,6 +190,45 @@ Simple hook that returns how many times the component has rendered. Optionally l
 
 ---
 
+## Use with AI coding agents
+
+The package ships an agent skill, [`whyrn-debug`](skills/whyrn-debug/SKILL.md). It teaches Claude Code, Codex and other [Agent Skills](https://agentskills.io)-compatible tools to measure re-renders instead of guessing: wire up `<WhyRN>`, read the reasons from Metro, apply the fix the log points to (`useMemo`, `useCallback`, `React.memo`, context split, store selector), and measure again.
+
+Expose it once from your app root and commit the links:
+
+```bash
+mkdir -p .claude/skills .agents/skills
+ln -s ../../node_modules/whyrn.dev/skills/whyrn-debug .claude/skills/whyrn-debug
+ln -s ../../node_modules/whyrn.dev/skills/whyrn-debug .agents/skills/whyrn-debug
+```
+
+Then ask — the agent picks the skill up from a plain request, or invoke it explicitly:
+
+```
+/whyrn-debug The product list stutters while scrolling. Find out why and fix it.   # Claude Code
+$whyrn-debug The product list stutters while scrolling. Find out why and fix it.   # Codex
+```
+
+The skill includes a log summarizer that ranks components by re-render count and groups their reasons:
+
+```bash
+node node_modules/whyrn.dev/skills/whyrn-debug/scripts/summarize-log.mjs metro.log
+```
+
+```
+1093 re-renders across 7 components
+
+  413  Button
+        235× prop "onPress" changed (new function reference)
+        178× Parent re-rendered
+   89  UserCard
+         89× prop "user" changed (new reference, same value)
+```
+
+A plain-text overview for LLMs lives at [whyrn.dev/llms.txt](https://whyrn.dev/llms.txt).
+
+---
+
 ## Comparison
 
 | Feature | why-did-you-render | React DevTools | **WhyRN** |

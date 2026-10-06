@@ -1,0 +1,4 @@
+interface:
+  display_name: 'WhyRN Debug'
+  short_description: 'Find out why React Native components re-render and fix it'
+  default_prompt: 'Use $whyrn-debug to find out why this screen re-renders and fix the unnecessary renders.'
