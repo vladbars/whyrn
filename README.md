@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.png" alt="WhyRN" width="120" />
+  <img src="assets/logo.svg" alt="WhyRN" width="120" />
 </p>
 
 <h1 align="center">WhyRN</h1>
@@ -15,10 +15,6 @@
 </p>
 
 ---
-
-<p align="center">
-  <img src="assets/demo.gif" alt="WhyRN Demo" width="320" />
-</p>
 
 > Components flash on re-render. A badge tells you *why*. No more guessing.
 

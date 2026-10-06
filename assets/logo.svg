@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <defs>
+    <linearGradient id="heat" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#3B82F6"/>
+      <stop offset="1" stop-color="#EF4444"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="#0F172A"/>
+  <!-- the component frame that "flashes" on re-render -->
+  <rect x="44" y="60" width="168" height="152" rx="22" fill="none" stroke="url(#heat)" stroke-width="10"/>
+  <!-- reason badge -->
+  <rect x="44" y="34" width="76" height="30" rx="10" fill="url(#heat)"/>
+  <circle cx="64" cy="49" r="5" fill="#fff"/>
+  <rect x="76" y="45" width="32" height="8" rx="4" fill="#fff" opacity="0.85"/>
+  <!-- re-render arrow -->
+  <path d="M 162 136 A 34 34 0 1 1 146 107" fill="none" stroke="#fff" stroke-width="12" stroke-linecap="round"/>
+  <path d="M 136 92 L 164 100 L 148 124 Z" fill="#fff" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>
+</svg>
