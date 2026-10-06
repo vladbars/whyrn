@@ -306,12 +306,15 @@ cd example && bun install && bunx expo start --ios
 
 ## Roadmap
 
-- [ ] Expo Snack playground
-- [ ] State variable name extraction (babel plugin)
-- [ ] Flipper / DevTools integration
+- [x] Only avoidable re-renders, with the parent to fix and the fix (0.3)
+- [x] Re-render count on the overlay (heatmap `×N`, 0.3)
+- [ ] Context name without `displayName` — resolve it from the Provider in the tree
+- [ ] State variable names instead of `state[0]` (optional Babel plugin)
+- [ ] FlatList / FlashList hints (`renderItem`, `keyExtractor`, `extraData`)
+- [ ] React Compiler awareness — skip hints it already handles
+- [ ] React Native DevTools panel
 - [ ] Per-component render timeline
-- [ ] Re-render count badge overlay
-- [ ] Context tracking with provider name
+- [ ] Expo Snack playground
 
 ---
 
