@@ -3,8 +3,7 @@ import { StyleSheet, View, Animated } from 'react-native';
 import type { RenderEvent, OverlayEntry, WhyRNConfig } from '../types';
 import { overlayManager } from './OverlayManager';
 import { FlashOverlay } from './FlashOverlay';
-import { getHeatColor } from './Heatmap';
-import { getRecentRenderRate } from '../core/tracker';
+import { HeatmapLayer } from './HeatmapLayer';
 import { uniqueId, internalComponents } from '../utils';
 
 function entryKey(entry: OverlayEntry): string {
@@ -28,6 +27,9 @@ export function OverlayContainer({ config }: OverlayContainerProps): React.React
   const frameRef = useRef<number | null>(null);
 
   useEffect(() => {
+    // The heatmap keeps its own persistent cells.
+    if (config.heatmap) return;
+
     const flush = () => {
       frameRef.current = null;
       const batch = queueRef.current;
@@ -53,7 +55,7 @@ export function OverlayContainer({ config }: OverlayContainerProps): React.React
       frameRef.current = null;
       queueRef.current = [];
     };
-  }, [config.maxOverlays]);
+  }, [config.maxOverlays, config.heatmap]);
 
   const handleComplete = useCallback((id: string) => {
     setEntries((prev) => prev.filter((e) => e.id !== id));
@@ -68,26 +70,20 @@ export function OverlayContainer({ config }: OverlayContainerProps): React.React
 
   return (
     <View ref={containerRef} style={styles.container} pointerEvents="none" onLayout={onLayout}>
-      {entries.map((entry) => {
-        const color = config.heatmap
-          ? getHeatColor(
-              getRecentRenderRate(entry.event.componentName),
-              config.heatmapColdColor,
-              config.heatmapHotColor
-            )
-          : config.flashColor;
-
-        return (
+      {config.heatmap ? (
+        <HeatmapLayer config={config} origin={origin} />
+      ) : (
+        entries.map((entry) => (
           <FlashOverlay
             key={entry.id}
             entry={entry}
             origin={origin}
-            color={color}
+            color={config.flashColor}
             duration={config.flashDuration}
             onComplete={handleComplete}
           />
-        );
-      })}
+        ))
+      )}
     </View>
   );
 }

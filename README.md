@@ -20,7 +20,7 @@
   <img src="https://raw.githubusercontent.com/vladbars/whyrn/main/assets/demo.gif" alt="WhyRN demo: components flash with a badge explaining each re-render" width="320" />
 </p>
 
-> Components flash on re-render. A badge tells you *why*. No more guessing.
+> Finds the re-renders you can remove — and tells you what to change, and where.
 
 ---
 
@@ -32,24 +32,35 @@ Ever stared at your React Native app and asked:
 - *"Why is my FlatList so laggy?"*
 - *"Which prop is causing this?"*
 
-React Native doesn't tell you. The Profiler gives you timing, not reasons. Console logs don't show you *where*.
+React DevTools can already **highlight** every component that renders, and its Profiler lists "props changed: style". That is a lot of boxes, and most of them are fine: state really changed, so the component had to render.
 
-**WhyRN does.**
+**WhyRN reports only the renders you can remove** — the ones where nothing the component depends on really changed — and says how:
 
-It highlights re-renders **on screen**, shows the **exact reason** — which prop changed, which state updated, whether it's a new reference or a real value change — and paints a **heatmap** so you can spot the hottest components instantly.
+```
+⚠️ WhyRN: 21 avoidable re-renders
+  Tab ×7 · rendered by TabBar
+    prop "onIndexChange": new function every render — useCallback in TabBar, then React.memo(Tab)
+  UserCard ×2 · rendered by Screen
+    prop "user": new object with the same content — useMemo in Screen, then React.memo(UserCard)
+  ThemeLabel ×2 · rendered by Screen
+    ThemeContext got a new value with the same content — useMemo the Provider value
+```
+
+No DevTools window, no profiling session: it runs in your dev build and writes to Metro.
 
 ---
 
 ## Features
 
-- 🔁 **Highlights re-renders in real time** — components flash with a colored border
-- 🧠 **Shows exact reason** — props, state, hooks, or parent re-render
-- 🔍 **Props diff** — distinguishes reference change vs value change
-- 🌡️ **Heatmap mode** — cold (blue) to hot (red) based on render frequency
+- 🎯 **Only avoidable re-renders** — real state/prop/context changes stay quiet
+- 🔍 **Reference vs value** — deep comparison tells a new object with the same content from a real change; inline callbacks are called out
+- 🛠️ **Says where to fix it** — names the parent that creates the unstable prop, and whether `useCallback`, `useMemo` or `React.memo` is the fix
+- 🧘 **Doesn't flood Metro** — details once per problem, then one short line every 10 s
+- 🌡️ **Heatmap** — persistent boxes, cold → hot by how often each instance renders
+- 🤖 **Agent skill included** — Claude Code / Codex can measure and fix re-renders for you
 - ⚡ **Zero config** — wrap your app, done
-- 📱 **React Native first** — built for mobile, not a web port
 - 🪶 **Zero dependencies** — only React and React Native as peers
-- 🔇 **Dev only** — hard `__DEV__` guard at every entry point; zero overhead in release builds
+- 🔇 **Dev only** — hard `__DEV__` guard at every entry point; inert in release builds
 
 ---
 
@@ -83,25 +94,38 @@ export default function App() {
 
 That's it. **No init function, no config files, no babel plugins.**
 
-Every component that re-renders will flash on screen with a badge showing the reason.
+Every avoidable re-render flashes on screen with a badge, and Metro gets a summary of what to fix.
 
 ---
 
 ## Example Output
 
-When a component re-renders, you see this in the console:
+By default, avoidable re-renders are batched into one summary per second:
 
 ```
-🔁 UserCard re-rendered (#4)
-  prop "user" changed (new reference, same value)
-  state[0] changed: 1 → 2
+⚠️ WhyRN: 11 avoidable re-renders
+  FlexChild ×2 · rendered by Screen
+    2× props are equal — wrap FlexChild in React.memo
+  Button ×2 · rendered by Counter
+    2× prop "onPress": new function every render — useCallback in Counter, then React.memo(Button)
 ```
 
-And on screen — every re-rendered component flashes, and the badge says why:
+A problem already explained is not repeated; it is counted and reported as one line:
 
-<p align="center">
-  <img src="https://raw.githubusercontent.com/vladbars/whyrn/main/assets/screenshot.png" alt="Overlay with reason badges: Counter state[0]: 14 → 15, UserCard props: user" width="360" />
-</p>
+```
+⚠️ WhyRN: still avoidable — Button ×51, FlexChild ×22, UserCard ×11 (same causes as above)
+```
+
+On screen, each avoidable re-render flashes with a short badge (`new fn: onPress`, `same value: user`, `equal props`).
+
+Need every render, legitimate ones included? Use `report="all"`:
+
+```
+🔁 Counter re-rendered (#9)
+  state[0] changed: 8 → 9
+🔁 UserCard re-rendered (#4) — avoidable
+  prop "user" changed (new reference, same value): {"name":"Alice"} → {"name":"Alice"}
+```
 
 ---
 
@@ -135,7 +159,7 @@ function UserCard(props) {
 
 ## Heatmap Mode
 
-See which components render the most — cold (blue) means few renders, hot (red) means many:
+See which component instances re-render the most. Each one keeps a tinted box while it keeps rendering; the color goes cold (blue) → hot (red) with the number of avoidable renders in the last 5 seconds, and the badge shows the count (`Button ×9 · new fn: onPress`). Boxes fade out once a component stops rendering.
 
 ```tsx
 <WhyRN heatmap>
@@ -143,17 +167,20 @@ See which components render the most — cold (blue) means few renders, hot (red
 </WhyRN>
 ```
 
-The border color shifts based on render frequency in a 5-second sliding window.
+<p align="center">
+  <img src="https://raw.githubusercontent.com/vladbars/whyrn/main/assets/heatmap.png" alt="Heatmap: components outlined from cold to hot with render counts and reasons" width="360" />
+</p>
 
 ---
 
 ## Configuration
 
-All options are passed as props. Every prop is optional. React Native internals (`View`, `Text`, `Pressable`, `Animated*`, `RCT*`, …) are always skipped.
+All options are passed as props. Every prop is optional. React Native internals (`View`, `Text`, `Pressable`, `Animated*`, `RCT*`, …) and internals of common libraries (react-navigation, react-native-screens, gesture-handler, fast-image) are always skipped — their props are not yours to fix.
 
 ```tsx
 <WhyRN
   enabled={__DEV__}              // Kill switch (default: __DEV__)
+  report="avoidable"             // 'avoidable' | 'all' (default: 'avoidable')
   trackHooks                     // Track useState/useReducer (default: true)
   logToConsole                   // Log to console (default: true)
   heatmap                        // Heatmap mode (default: false)
@@ -174,11 +201,11 @@ All options are passed as props. Every prop is optional. React Native internals 
 
 ### `<WhyRN>`
 
-Root provider. Wraps your app to enable visual overlays and auto-tracking.
+Root provider. Tracks every component below it, draws the overlay and logs the summary. See [Configuration](#configuration).
 
 ### `withWhyRN(Component, name?)`
 
-Marks a specific component as tracked and returns the same component (no wrapper). Works with or without `<WhyRN>` — without it, re-renders are logged to the console only.
+Marks a specific component as tracked and returns the same component (no wrapper). Every re-render of it is logged, avoidable or not. Works with or without `<WhyRN>` — without it, re-renders are logged to the console only.
 
 ### `useWhyRN(name, props)`
 
@@ -216,13 +243,14 @@ node node_modules/whyrn.dev/skills/whyrn-debug/scripts/summarize-log.mjs metro.l
 ```
 
 ```
-1093 re-renders across 7 components
+779 re-renders across 11 components
 
-  413  Button
-        235× prop "onPress" changed (new function reference)
-        178× Parent re-rendered
-   89  UserCard
-         89× prop "user" changed (new reference, same value)
+  302  Button  (rendered by Screen)
+          2× prop "onPress": new function every render — useCallback in Screen, then React.memo(Button)
+  132  FlexChild  (rendered by Screen)
+          4× props are equal — wrap FlexChild in React.memo
+   66  ThemeLabel  (rendered by Screen)
+          2× ThemeContext got a new value with the same content — useMemo the Provider value
 ```
 
 A plain-text overview for LLMs lives at [whyrn.dev/llms.txt](https://whyrn.dev/llms.txt).
@@ -231,16 +259,16 @@ A plain-text overview for LLMs lives at [whyrn.dev/llms.txt](https://whyrn.dev/l
 
 ## Comparison
 
-| Feature | why-did-you-render | React DevTools | **WhyRN** |
+| | React DevTools | why-did-you-render | **WhyRN** |
 |---|---|---|---|
-| React Native support | ⚠️ Partial | ✅ | ✅ |
-| Visual overlay | ❌ | ⚠️ Border only | ✅ Flash + badge |
-| Shows *why* | ⚠️ Console only | ❌ | ✅ On screen |
-| Props diff | ✅ | ❌ | ✅ |
-| Reference vs value | ⚠️ | ❌ | ✅ |
-| Heatmap | ❌ | ❌ | ✅ |
-| Zero config | ❌ Needs init + babel | ❌ | ✅ |
-| Hook tracking | ✅ | ❌ | ✅ |
+| Highlights renders on screen | ✅ "Highlight updates" | ❌ | ✅ |
+| Says why | ⚠️ Profiler: "props changed: x" | ✅ Console | ✅ Console + badge |
+| Same content vs real change | ❌ | ✅ | ✅ |
+| Only avoidable renders | ❌ every render | ⚠️ opt-in per component | ✅ default |
+| Says where to fix it | ❌ | ❌ | ✅ parent + hook to use |
+| Needs a DevTools window / profiling session | ✅ needed | ❌ | ❌ |
+| Setup | built in | init + Babel config | one wrapper |
+| Agent skill | ❌ | ❌ | ✅ |
 
 ---
 
@@ -249,8 +277,8 @@ A plain-text overview for LLMs lives at [whyrn.dev/llms.txt](https://whyrn.dev/l
 1. `<WhyRN>` subscribes to React's commit notifications through `__REACT_DEVTOOLS_GLOBAL_HOOK__` (the same channel React DevTools uses; React Native dev builds always provide it)
 2. On every commit it walks only the parts of the fiber tree that did work, and compares each re-rendered component with its previous version: props, `useState`/`useReducer` values, context values and external stores
 3. The host views each component rendered are measured with `measureInWindow`
-4. A global overlay renders an `Animated.View` border that fades out, plus a reason badge
-5. In heatmap mode, the border color is computed from the render rate in a sliding window
+4. A render is **avoidable** when no prop changed by value (only new functions or objects with the same content), no state changed except to an equal value, and no context or store pushed new content. Only those are reported unless `report="all"`
+5. A global overlay flashes a border with a reason badge — or, in heatmap mode, keeps a box per component instance colored by its render rate in a 5-second window
 
 Nothing in your tree is replaced or wrapped: no patched `createElement`, no patched hooks, no extra views. Layout, component identity (`child.type === Screen` checks in navigators) and hook order stay exactly as they are.
 

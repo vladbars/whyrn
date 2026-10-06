@@ -1,4 +1,4 @@
-import React, { memo, useCallback, useEffect, useReducer, useState } from 'react';
+import React, { createContext, memo, useCallback, useContext, useEffect, useReducer, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { WhyRN, withWhyRN, useRenderCount } from 'whyrn.dev';
@@ -60,6 +60,20 @@ function ReducerBox() {
   );
 }
 
+// 7. Context consumer: the provider passes a new object with the same content every render.
+const ThemeContext = createContext({ mode: 'light' });
+ThemeContext.displayName = 'ThemeContext';
+
+const ThemeLabel = memo(function ThemeLabel() {
+  const theme = useContext(ThemeContext);
+  return (
+    <View style={styles.card}>
+      <Text style={styles.title}>ThemeLabel (context, same content)</Text>
+      <Text>mode: {theme.mode}</Text>
+    </View>
+  );
+});
+
 // 6. Explicit HOC
 function Tagged({ value }: { value: number }) {
   useRenderCount('Tagged');
@@ -107,6 +121,9 @@ function Screen() {
         <FlexChild color="#fca5a5" />
       </View>
       <ReducerBox />
+      <ThemeContext.Provider value={{ mode: 'light' }}>
+        <ThemeLabel />
+      </ThemeContext.Provider>
       <TrackedTagged value={tick} />
     </ScrollView>
   );

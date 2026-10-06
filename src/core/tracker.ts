@@ -1,6 +1,6 @@
 import type { RenderEvent, RenderReason } from '../types';
 import { getConfig } from '../utils';
-import { formatRenderEvent } from './logger';
+import { formatRenderEvent, queueAvoidable } from './logger';
 
 interface ComponentRecord {
   renderCount: number;
@@ -25,8 +25,18 @@ function pruneTimestamps(record: ComponentRecord, now: number): void {
   record.timestamps = record.timestamps.filter((t) => t > cutoff);
 }
 
+interface RenderMeta {
+  avoidable: boolean;
+  owner?: string;
+  memo?: boolean;
+}
+
 /** Count a re-render and log it. Without <WhyRN> mounted it still logs to the console. */
-export function recordRender(componentName: string, reasons: RenderReason[]): RenderEvent {
+export function recordRender(
+  componentName: string,
+  reasons: RenderReason[],
+  meta: RenderMeta = { avoidable: false }
+): RenderEvent {
   const config = getConfig();
 
   const now = Date.now();
@@ -40,10 +50,16 @@ export function recordRender(componentName: string, reasons: RenderReason[]): Re
     renderCount: record.renderCount,
     timestamp: now,
     reasons,
+    avoidable: meta.avoidable,
+    owner: meta.owner,
+    memo: meta.memo,
   };
 
   if (config ? config.enabled && config.logToConsole : true) {
-    formatRenderEvent(event);
+    // Avoidable renders are batched into a short summary; everything else
+    // (report="all", withWhyRN components) is logged as it happens.
+    if (config?.report === 'avoidable' && event.avoidable) queueAvoidable(event);
+    else formatRenderEvent(event);
   }
 
   return event;

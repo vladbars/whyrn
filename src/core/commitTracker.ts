@@ -1,11 +1,13 @@
 import type { PropChange, RenderReason, StateChange } from '../types';
 import { IS_DEV } from '../constants';
 import { getConfig, shouldTrack, boundaryComponents, internalComponents, getForcedName } from '../utils';
-import { diffProps, buildReasons } from './differ';
+import { diffProps, buildReasons, isAvoidable, isEquivalent } from './differ';
 import { recordRender } from './tracker';
 import { overlayManager } from '../overlay/OverlayManager';
 import {
   ClassComponent,
+  MemoComponent,
+  SimpleMemoComponent,
   didFiberRender,
   findHostFibers,
   getFiberName,
@@ -79,6 +81,9 @@ export function installCommitTracker(): void {
 interface PendingReport {
   name: string;
   reasons: RenderReason[];
+  avoidable: boolean;
+  owner?: string;
+  memo: boolean;
   hostNodes: unknown[];
 }
 
@@ -108,11 +113,19 @@ function handleCommit(root: FiberRoot | undefined): void {
       const name = forcedName ?? getFiberName(fiber);
 
       if (forcedName !== undefined || (watching && inside && shouldTrack(name, config!))) {
-        reports.push({
-          name,
-          reasons: computeReasons(fiber, prev, config?.trackHooks ?? true),
-          hostNodes: findHostFibers(fiber).map((host) => host.stateNode),
-        });
+        const { reasons, avoidable } = computeReasons(fiber, prev, config?.trackHooks ?? true);
+        const reportAll = forcedName !== undefined || config?.report === 'all';
+
+        if (avoidable || reportAll) {
+          reports.push({
+            name,
+            reasons,
+            avoidable,
+            owner: getOwnerName(fiber),
+            memo: isMemoFiber(fiber),
+            hostNodes: findHostFibers(fiber).map((host) => host.stateNode),
+          });
+        }
       }
     }
 
@@ -127,7 +140,11 @@ function handleCommit(root: FiberRoot | undefined): void {
   if (reports.length === 0) return;
 
   const events = reports.map((report) => ({
-    event: recordRender(report.name, report.reasons),
+    event: recordRender(report.name, report.reasons, {
+      avoidable: report.avoidable,
+      owner: report.owner,
+      memo: report.memo,
+    }),
     hostNodes: report.hostNodes,
   }));
 
@@ -143,7 +160,33 @@ function handleCommit(root: FiberRoot | undefined): void {
   });
 }
 
-function computeReasons(fiber: Fiber, prev: Fiber, trackHooks: boolean): RenderReason[] {
+function isMemoFiber(fiber: Fiber): boolean {
+  return fiber.tag === SimpleMemoComponent || fiber.return?.tag === MemoComponent;
+}
+
+/** The component that rendered this one, i.e. where its props were created. */
+function getOwnerName(fiber: Fiber): string | undefined {
+  const owner = (fiber as Fiber & { _debugOwner?: Fiber | { name?: string } | null })._debugOwner;
+  if (owner && typeof (owner as Fiber).tag === 'number' && (owner as Fiber).type) {
+    return getFiberName(owner as Fiber);
+  }
+  if (owner && typeof (owner as { name?: string }).name === 'string') {
+    return (owner as { name: string }).name;
+  }
+
+  for (let node = fiber.return; node; node = node.return) {
+    if (isCompositeFiber(node) && !internalComponents.has(node.type) && !boundaryComponents.has(node.type)) {
+      return getFiberName(node);
+    }
+  }
+  return undefined;
+}
+
+function computeReasons(
+  fiber: Fiber,
+  prev: Fiber,
+  trackHooks: boolean
+): { reasons: RenderReason[]; avoidable: boolean } {
   const prevProps = prev.memoizedProps;
   const nextProps = fiber.memoizedProps ?? {};
   const propsChanged = prevProps !== nextProps;
@@ -163,15 +206,14 @@ function computeReasons(fiber: Fiber, prev: Fiber, trackHooks: boolean): RenderR
 
   const reasons = buildReasons(propChanges, stateChanges, extra);
 
-  if (reasons.length === 1 && reasons[0].type === 'parent') {
-    if (!propsChanged) {
-      reasons[0].detail = 'Re-rendered with the same props and state';
-    } else if (prevProps && prevProps.children !== nextProps.children) {
-      reasons[0].detail = 'Parent re-rendered (new children)';
-    }
+  if (reasons.length === 1 && reasons[0].type === 'parent' && !propsChanged) {
+    // Same props object and no change we can see (e.g. useTransition, use()).
+    // Not something we can call wasted.
+    reasons[0].detail = 'Re-rendered with the same props and state';
+    return { reasons, avoidable: false };
   }
 
-  return reasons;
+  return { reasons, avoidable: isAvoidable(reasons) };
 }
 
 function isStateHook(hook: HookState): boolean {
@@ -198,12 +240,20 @@ function diffHooks(
           hookName: `state[${stateIndex}]`,
           prev: prevHook.memoizedState,
           next: nextHook.memoizedState,
+          equivalent: isEquivalent(prevHook.memoizedState, nextHook.memoizedState),
         });
       }
       stateIndex++;
     } else if (isExternalStoreHook(nextHook)) {
       if (!Object.is(prevHook.memoizedState, nextHook.memoizedState)) {
-        extra.push({ type: 'hooks', detail: 'External store changed (useSyncExternalStore)' });
+        const same = isEquivalent(prevHook.memoizedState, nextHook.memoizedState);
+        extra.push({
+          type: 'hooks',
+          equivalent: same,
+          detail: same
+            ? 'Store selector returned a new object with the same content'
+            : 'External store changed (useSyncExternalStore)',
+        });
       }
     }
 
@@ -225,7 +275,13 @@ function diffClassState(prev: unknown, next: unknown): StateChange[] {
 
   for (const key of keys) {
     if (!Object.is(prevState[key], nextState[key])) {
-      changes.push({ index: index, hookName: `state.${key}`, prev: prevState[key], next: nextState[key] });
+      changes.push({
+        index,
+        hookName: `state.${key}`,
+        prev: prevState[key],
+        next: nextState[key],
+        equivalent: isEquivalent(prevState[key], nextState[key]),
+      });
     }
     index++;
   }
@@ -241,7 +297,12 @@ function diffContexts(prev: Fiber, next: Fiber): RenderReason[] {
   while (prevDep && nextDep) {
     if (!Object.is(prevDep.memoizedValue, nextDep.memoizedValue)) {
       const name = nextDep.context?.displayName ?? 'Context';
-      reasons.push({ type: 'context', detail: `${name} value changed` });
+      const same = isEquivalent(prevDep.memoizedValue, nextDep.memoizedValue);
+      reasons.push({
+        type: 'context',
+        equivalent: same,
+        detail: same ? `${name} got a new value with the same content` : `${name} value changed`,
+      });
     }
     prevDep = prevDep.next;
     nextDep = nextDep.next;

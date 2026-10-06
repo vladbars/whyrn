@@ -24,6 +24,13 @@ stores), measures host views with `measureInWindow`, and draws an overlay.
 - The overlay subtree is registered in `internalComponents` and never inspected,
   otherwise overlay updates would report themselves forever.
 - Zero runtime dependencies; `react` and `react-native` are peers.
+- **Default output is avoidable re-renders only** (`report: 'avoidable'`). A render
+  is avoidable when no prop changed by value (`isEquivalent` in `differ.ts`: deep,
+  functions count as equal, class instances by reference, bounded depth/size),
+  state changed only to an equal value, and no context or store pushed new
+  content. Never label a render avoidable when unsure — false positives are what
+  made the old output spam. Logging is batched (`logger.ts`): details once per
+  component + cause, repeats as one line every 10 s.
 
 ## Layout
 
@@ -31,8 +38,9 @@ stores), measures host views with `measureInWindow`, and draws an overlay.
 src/core/commitTracker.ts  commit hook, fiber walk, reason computation
 src/core/fiber.ts          fiber shapes, host lookup, measurement (Fabric/Paper/web)
 src/core/differ.ts         props diff, reason building
-src/core/tracker.ts        render counts, heat window, console logging
-src/overlay/               flash boxes and badges
+src/core/tracker.ts        render counts, routes events to the logger
+src/core/logger.ts         per-render lines (report="all") and avoidable summaries
+src/overlay/               flash boxes and badges; HeatmapLayer = persistent per-instance heatmap
 src/components/            <WhyRN>, withWhyRN
 src/hooks/                 useWhyRN, useRenderCount
 skills/whyrn-debug/        agent skill shipped in the npm package

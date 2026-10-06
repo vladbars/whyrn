@@ -5,11 +5,12 @@ description: Find out why React Native components re-render and fix the unnecess
 
 # Debugging React Native re-renders with WhyRN
 
-`whyrn.dev` observes React commits and, for every component that re-rendered,
-reports **why**: which prop changed (and whether only its reference changed),
-which `useState`/`useReducer` value changed, which context value changed, or
-that the parent simply rendered. It prints that to Metro and draws a flashing
-box with a badge on the device.
+`whyrn.dev` observes React commits and reports the **avoidable** re-renders:
+components that rendered although nothing they depend on really changed — a
+new function or an object with the same content as a prop, a context value
+with the same content, or equal props from a parent that rendered. For each it
+names the parent to fix and the fix (`useCallback`, `useMemo`, `React.memo`).
+It prints a summary to Metro and flashes a box with a badge on the device.
 
 Do not guess at re-render causes from reading code. Measure first, then fix
 the cause the log names, then measure again.
@@ -64,22 +65,38 @@ no wrapper view.
 ## 3. Reproduce and read the log
 
 Ask the user to perform the slow interaction (scroll, type, open the screen),
-or run the app yourself if you can drive a simulator. Every re-render is
-printed to Metro like this:
+or run the app yourself if you can drive a simulator.
+
+By default WhyRN reports **only avoidable re-renders** — renders where nothing
+the component depends on really changed. Legitimate renders (real state, prop
+or context changes) stay quiet, so everything in the log is worth a look. Metro
+gets one summary per second, naming the parent that creates the unstable prop:
 
 ```
-🔁 ProductRow re-rendered (#42)
-  prop "onPress" changed (new function reference)
-🔁 ProductRow re-rendered (#43)
-  prop "item" changed (new reference, same value): {"id":1} → {"id":1}
-🔁 CartBadge re-rendered (#7)
-  External store changed (useSyncExternalStore)
-🔁 Header re-rendered (#12)
-  Parent re-rendered
+⚠️ WhyRN: 21 avoidable re-renders
+  Tab ×7 · rendered by TabBar
+    prop "onIndexChange": new function every render — useCallback in TabBar, then React.memo(Tab)
+  UserCard ×2 · rendered by Screen
+    prop "user": new object with the same content — useMemo in Screen, then React.memo(UserCard)
+  ThemeLabel ×2 · rendered by Screen
+    ThemeContext got a new value with the same content — useMemo the Provider value
+  FlexChild ×4 · rendered by Screen
+    props are equal — wrap FlexChild in React.memo
 ```
+
+A problem is explained once; later occurrences only bump a counter line:
+
+```
+⚠️ WhyRN: still avoidable — Button ×51, FlexChild ×22 (same causes as above)
+```
+
+If a screen is slow but the summary is empty, the renders are legitimate —
+switch to `report="all"` to see every render with its real cause (state,
+props, context), then reduce how often that state changes or move it lower in
+the tree.
 
 Save the Metro output to a file and summarize it — this ranks components by
-render count and groups their reasons:
+render count and groups their causes (works for both formats):
 
 ```bash
 node "$WHYRN_DEBUG_SKILL_DIR/scripts/summarize-log.mjs" metro.log
@@ -91,16 +108,20 @@ script also reads from stdin.
 
 ## 4. Fix what the log names
 
-| Log line | Cause | Fix |
+| Summary line | Cause | Fix |
 |---|---|---|
-| `prop "x" changed (new reference, same value)` | Object or array literal created during the parent's render | `useMemo` in the parent, or hoist the constant out of the component |
-| `prop "onX" changed (new function reference)` | Inline arrow function / unmemoized handler | `useCallback` in the parent (with correct deps) |
-| `prop "x" changed: a → b` | A real value change | Usually correct. Only act if the value changes more often than the UI needs |
-| `state[i] changed: a → b` | The component's own `useState`/`useReducer` (index = hook order) | Expected, unless the state is set redundantly or should live lower in the tree |
-| `XContext value changed` | Provider passes a new `value` object each render | `useMemo` the provider value; split fast-changing and slow-changing data into separate contexts |
-| `External store changed (useSyncExternalStore)` | Store selector returns a new object/array | Select primitives, or use a shallow-equal selector (e.g. `useShallow` in Zustand) |
-| `Parent re-rendered` | Props are shallow-equal — nothing changed for this component | Wrap the component in `React.memo` (props must then be stable — see the first two rows) |
-| `Parent re-rendered (new children)` | Parent passes new JSX `children` | Expected for wrappers; memoize the children or restructure if it matters |
+| `prop "x": new object with the same content — useMemo in P` | Object/array/JSX literal created during `P`'s render | `useMemo` in `P`, or hoist the constant out of the component |
+| `prop "onX": new function every render — useCallback in P` | Inline arrow function / unmemoized handler in `P` | `useCallback` in `P` (with correct deps) |
+| `props are equal — wrap C in React.memo` | `C` re-renders only because its parent did | `React.memo(C)` |
+| `… (they defeat React.memo(C))` | `C` is memoized, but receives unstable props | Fix the props in the parent; the memo then starts working |
+| `XContext got a new value with the same content — useMemo the Provider value` | Provider passes a new `value` object each render | `useMemo` the provider value; split fast- and slow-changing data into separate contexts |
+| `Store selector returned a new object with the same content` | Selector builds a new object/array | Select primitives, or use a shallow-equal selector (e.g. `useShallow` in Zustand) |
+| `state[i] set to an equal value — keep the previous object` | `setState` called with a fresh but equal object | Return the previous state when nothing changed |
+
+With `report="all"`, the per-render lines mean: `prop "x" changed: a → b` and
+`state[i] changed: a → b` are real changes (usually fine); `XContext value
+changed` means the provider value really changed — consider splitting the
+context if this consumer only needs part of it.
 
 Rules:
 
@@ -129,9 +150,11 @@ drop, read its new reason — the first fix often reveals the next cause.
 
 ## Reference
 
-- `<WhyRN>` props: `enabled` (`__DEV__`), `heatmap`, `include`, `exclude`,
+- `<WhyRN>` props: `enabled` (`__DEV__`), `report` (`'avoidable'` | `'all'`), `heatmap`, `include`, `exclude`,
   `trackHooks` (`true`), `logToConsole` (`true`), `flashDuration` (`600`),
   `flashColor`, `heatmapColdColor`, `heatmapHotColor`, `maxOverlays` (`50`).
+- `heatmap` keeps a box per component instance, colored by its render rate in
+  the last 5 s, with a `×N` count — useful to find the hottest spot on screen.
 - `useWhyRN(name, props)` returns the reasons for the current render as data.
 - `useRenderCount(name?)` returns the render count and optionally logs it.
 - Docs: https://whyrn.dev · https://github.com/vladbars/whyrn

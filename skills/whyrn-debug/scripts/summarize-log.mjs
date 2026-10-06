@@ -1,9 +1,10 @@
 #!/usr/bin/env node
-// Summarize WhyRN re-render logs from Metro: components ranked by re-render
-// count, each with its reasons grouped. Reads a file argument or stdin.
+// Summarize WhyRN output from Metro: components ranked by avoidable re-render
+// count, each with its causes. Understands both the default summaries
+// (report="avoidable") and per-render lines (report="all"). Reads a file
+// argument or stdin.
 //
 //   node summarize-log.mjs metro.log
-//   npx expo start 2>&1 | tee metro.log      # then run the line above
 //   pbpaste | node summarize-log.mjs --top 10
 
 import { readFileSync } from 'node:fs';
@@ -23,44 +24,103 @@ for (let i = 0; i < args.length; i++) {
 const raw = file ? readFileSync(file, 'utf8') : readFileSync(0, 'utf8');
 
 const ANSI = /\x1b\[[0-9;?]*[a-zA-Z]/g;
-const HEADER = /🔁\s+(.+?) re-rendered \(#\d+\)/;
 // Metro prefixes console output with " LOG " / " INFO " etc.
 const PREFIX = /^\s*(LOG|INFO|WARN|DEBUG)\s+/;
 
+// report="avoidable"
+const SUMMARY_ITEM = /^ {2}(\S.*?) ×(\d+)(?: · rendered by (.+))?$/;
+const SUMMARY_CAUSE = /^ {4}(?:(\d+)× )?(.+)$/;
+const STILL = /WhyRN: still avoidable — (.+?) \(same causes/;
+// report="all"
+const RENDER = /🔁\s+(.+?) re-rendered \(#\d+\)/;
+const RENDER_REASON = /^ {2}(\S.*)$/;
+
 const components = new Map();
-let current = null;
 
-for (let line of raw.replace(ANSI, '').split(/\r?\n/)) {
-  line = line.replace(PREFIX, '');
-  const header = line.match(HEADER);
-
-  if (header) {
-    const name = header[1].trim();
-    current = components.get(name) ?? { name, renders: 0, reasons: new Map() };
-    current.renders++;
-    components.set(name, current);
-    continue;
+function get(name, owner) {
+  const key = `${name}\u0000${owner ?? ''}`;
+  let c = components.get(key);
+  if (!c) {
+    c = { name, owner, renders: 0, causes: new Map() };
+    components.set(key, c);
   }
-
-  // Reason lines are indented by two spaces directly under a header.
-  if (current && /^\s{2}\S/.test(line)) {
-    const reason = normalize(line.trim());
-    current.reasons.set(reason, (current.reasons.get(reason) ?? 0) + 1);
-    continue;
-  }
-
-  if (line.trim() !== '') current = null;
+  return c;
 }
 
-// Keep the reason category, drop the concrete values so identical causes group.
+// Keep the cause category, drop concrete values so identical causes group.
 function normalize(reason) {
   return reason
     .replace(/(changed(?: \([^)]*\))?):.*$/, '$1')
     .replace(/^(state\[\d+\] changed).*$/, '$1');
 }
 
+let mode = null; // 'summary' | 'render'
+let current = null;
+
+for (let line of raw.replace(ANSI, '').split(/\r?\n/)) {
+  line = line.replace(PREFIX, '');
+
+  const still = line.match(STILL);
+  if (still) {
+    for (const part of still[1].split(', ')) {
+      const m = part.match(/^(.+) ×(\d+)$/);
+      if (!m) continue;
+      // Attribute repeats to the component's most common owner seen so far.
+      const known = [...components.values()].filter((c) => c.name === m[1]);
+      const target = known.sort((a, b) => b.renders - a.renders)[0] ?? get(m[1]);
+      target.renders += Number(m[2]);
+    }
+    mode = null;
+    current = null;
+    continue;
+  }
+
+  if (/WhyRN: \d+ avoidable re-render/.test(line)) {
+    mode = 'summary';
+    current = null;
+    continue;
+  }
+
+  const render = line.match(RENDER);
+  if (render) {
+    mode = 'render';
+    current = get(render[1].trim());
+    current.renders++;
+    continue;
+  }
+
+  if (mode === 'summary') {
+    const item = line.match(SUMMARY_ITEM);
+    if (item) {
+      current = get(item[1], item[3]);
+      current.renders += Number(item[2]);
+      continue;
+    }
+    const cause = current && line.match(SUMMARY_CAUSE);
+    if (cause) {
+      const n = Number(cause[1] ?? 1);
+      current.causes.set(cause[2], (current.causes.get(cause[2]) ?? 0) + n);
+      continue;
+    }
+  }
+
+  if (mode === 'render' && current) {
+    const reason = line.match(RENDER_REASON);
+    if (reason) {
+      const r = normalize(reason[1].trim());
+      current.causes.set(r, (current.causes.get(r) ?? 0) + 1);
+      continue;
+    }
+  }
+
+  if (line.trim() !== '') {
+    mode = null;
+    current = null;
+  }
+}
+
 if (components.size === 0) {
-  console.log('No WhyRN re-render lines found. Is <WhyRN> mounted and logToConsole enabled?');
+  console.log('No WhyRN output found. Is <WhyRN> mounted and logToConsole enabled?');
   process.exit(1);
 }
 
@@ -70,10 +130,11 @@ const total = ranked.reduce((sum, c) => sum + c.renders, 0);
 console.log(`${total} re-renders across ${ranked.length} components\n`);
 
 for (const c of ranked.slice(0, top)) {
-  console.log(`${String(c.renders).padStart(5)}  ${c.name}`);
-  const reasons = [...c.reasons.entries()].sort((a, b) => b[1] - a[1]);
-  for (const [reason, count] of reasons) {
-    console.log(`       ${String(count).padStart(4)}× ${reason}`);
+  const by = c.owner ? `  (rendered by ${c.owner})` : '';
+  console.log(`${String(c.renders).padStart(5)}  ${c.name}${by}`);
+  const causes = [...c.causes.entries()].sort((a, b) => b[1] - a[1]);
+  for (const [cause, count] of causes) {
+    console.log(`       ${String(count).padStart(4)}× ${cause}`);
   }
 }
 

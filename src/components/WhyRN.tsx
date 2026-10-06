@@ -13,6 +13,7 @@ boundaryComponents.add(WhyRN);
 export function WhyRN({
   children,
   enabled = DEFAULT_CONFIG.enabled,
+  report = DEFAULT_CONFIG.report,
   trackHooks = DEFAULT_CONFIG.trackHooks,
   logToConsole = DEFAULT_CONFIG.logToConsole,
   heatmap = DEFAULT_CONFIG.heatmap,
@@ -34,6 +35,7 @@ export function WhyRN({
   const config = useMemo<WhyRNConfig>(
     () => ({
       enabled: isEnabled,
+      report,
       trackHooks,
       logToConsole,
       heatmap,
@@ -47,7 +49,7 @@ export function WhyRN({
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [
-      isEnabled, trackHooks, logToConsole, heatmap,
+      isEnabled, report, trackHooks, logToConsole, heatmap,
       flashDuration, flashColor, heatmapColdColor, heatmapHotColor,
       maxOverlays, includeKey, excludeKey,
     ]
