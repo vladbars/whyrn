@@ -3,6 +3,7 @@ import { IS_DEV } from '../constants';
 import { getConfig, shouldTrack, boundaryComponents, internalComponents, getForcedName } from '../utils';
 import { diffProps, buildReasons, isAvoidable, isEquivalent } from './differ';
 import { recordRender } from './tracker';
+import { checkCritical } from './critical';
 import { overlayManager } from '../overlay/OverlayManager';
 import {
   ClassComponent,
@@ -84,7 +85,32 @@ interface PendingReport {
   avoidable: boolean;
   owner?: string;
   memo: boolean;
+  /** Set when the owner was reported in the same commit: this render is a consequence. */
+  follows?: string;
+  durationMs?: number;
+  instanceId: number;
+  /** Renders / wasted ms this report stands for (a critical burst carries its window). */
+  count: number;
+  wastedMs?: number;
   hostNodes: unknown[];
+}
+
+// React keeps two fibers per component instance (current and alternate).
+const instanceIds = new WeakMap<Fiber, number>();
+let nextInstanceId = 1;
+
+function getInstanceId(fiber: Fiber): number {
+  let id = instanceIds.get(fiber) ?? (fiber.alternate ? instanceIds.get(fiber.alternate) : undefined);
+  if (id === undefined) id = nextInstanceId++;
+  instanceIds.set(fiber, id);
+  if (fiber.alternate) instanceIds.set(fiber.alternate, id);
+  return id;
+}
+
+/** Self + subtree render time of this commit. Only recorded in profiling mode (dev with the DevTools hook). */
+function getDuration(fiber: Fiber): number | undefined {
+  const d = (fiber as Fiber & { actualDuration?: number }).actualDuration;
+  return typeof d === 'number' && Number.isFinite(d) && d >= 0 ? d : undefined;
 }
 
 function handleCommit(root: FiberRoot | undefined): void {
@@ -95,6 +121,9 @@ function handleCommit(root: FiberRoot | undefined): void {
   const watching = !!config?.enabled;
 
   const reports: PendingReport[] = [];
+  // Reported fiber → the root of its chain, so children of a flagged component
+  // are shown as consequences instead of separate problems.
+  const reportedRoots = new Map<Fiber, string>();
   const stack: Array<[Fiber, boolean]> = [[rootFiber, false]];
 
   while (stack.length > 0) {
@@ -115,16 +144,44 @@ function handleCommit(root: FiberRoot | undefined): void {
       if (forcedName !== undefined || (watching && inside && shouldTrack(name, config!))) {
         const { reasons, avoidable } = computeReasons(fiber, prev, config?.trackHooks ?? true);
         const reportAll = forcedName !== undefined || config?.report === 'all';
+        const ownerInfo = getOwner(fiber);
+        const owner = ownerInfo.name;
+        const ownerFiber = ownerInfo.fiber;
+        const follows = ownerFiber
+          ? reportedRoots.get(ownerFiber) ?? (ownerFiber.alternate ? reportedRoots.get(ownerFiber.alternate) : undefined)
+          : undefined;
+        const durationMs = getDuration(fiber);
+        let count = 1;
+        let wastedMs = avoidable ? durationMs : undefined;
+        let include = reportAll || (avoidable && config?.report === 'avoidable');
 
-        if (avoidable || reportAll) {
+        if (!include && avoidable && (config?.report ?? 'critical') === 'critical') {
+          const result = checkCritical(
+            `${name}\u0000${owner ?? ''}`,
+            durationMs,
+            config?.criticalMs ?? 16,
+            Date.now()
+          );
+          include = result.critical;
+          count = result.count;
+          wastedMs = result.ms;
+        }
+
+        if (include) {
           reports.push({
             name,
             reasons,
             avoidable,
-            owner: getOwnerName(fiber),
+            owner,
             memo: isMemoFiber(fiber),
-            hostNodes: findHostFibers(fiber).map((host) => host.stateNode),
+            follows,
+            durationMs,
+            instanceId: getInstanceId(fiber),
+            count,
+            wastedMs,
+            hostNodes: follows ? [] : findHostFibers(fiber).map((host) => host.stateNode),
           });
+          reportedRoots.set(fiber, follows ?? name);
         }
       }
     }
@@ -144,6 +201,11 @@ function handleCommit(root: FiberRoot | undefined): void {
       avoidable: report.avoidable,
       owner: report.owner,
       memo: report.memo,
+      follows: report.follows,
+      durationMs: report.durationMs,
+      instanceId: report.instanceId,
+      count: report.count,
+      wastedMs: report.wastedMs,
     }),
     hostNodes: report.hostNodes,
   }));
@@ -165,21 +227,22 @@ function isMemoFiber(fiber: Fiber): boolean {
 }
 
 /** The component that rendered this one, i.e. where its props were created. */
-function getOwnerName(fiber: Fiber): string | undefined {
+function getOwner(fiber: Fiber): { name?: string; fiber?: Fiber } {
   const owner = (fiber as Fiber & { _debugOwner?: Fiber | { name?: string } | null })._debugOwner;
   if (owner && typeof (owner as Fiber).tag === 'number' && (owner as Fiber).type) {
-    return getFiberName(owner as Fiber);
-  }
-  if (owner && typeof (owner as { name?: string }).name === 'string') {
-    return (owner as { name: string }).name;
+    return { name: getFiberName(owner as Fiber), fiber: owner as Fiber };
   }
 
   for (let node = fiber.return; node; node = node.return) {
     if (isCompositeFiber(node) && !internalComponents.has(node.type) && !boundaryComponents.has(node.type)) {
-      return getFiberName(node);
+      return { name: getFiberName(node), fiber: node };
     }
   }
-  return undefined;
+
+  if (owner && typeof (owner as { name?: string }).name === 'string') {
+    return { name: (owner as { name: string }).name };
+  }
+  return {};
 }
 
 function computeReasons(

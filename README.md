@@ -20,7 +20,7 @@
   <img src="https://raw.githubusercontent.com/vladbars/whyrn/main/assets/demo.gif" alt="WhyRN demo: components flash with a badge explaining each re-render" width="320" />
 </p>
 
-> Finds the re-renders you can remove — and tells you what to change, and where.
+> Finds the re-renders that cost you frames — and tells you what to change, and where.
 
 ---
 
@@ -34,16 +34,14 @@ Ever stared at your React Native app and asked:
 
 React DevTools can already **highlight** every component that renders, and its Profiler lists "props changed: style". That is a lot of boxes, and most of them are fine: state really changed, so the component had to render.
 
-**WhyRN reports only the renders you can remove** — the ones where nothing the component depends on really changed — and says how:
+**WhyRN reports only the renders worth fixing**: nothing the component depends on really changed, *and* those wasted renders cost real time — by default at least 16 ms (a frame) per second. A cheap icon rendering once more stays quiet; a heavy list rebuilt on every tick does not:
 
 ```
-⚠️ WhyRN: 21 avoidable re-renders
-  Tab ×7 · rendered by TabBar
-    prop "onIndexChange": new function every render — useCallback in TabBar, then React.memo(Tab)
-  UserCard ×2 · rendered by Screen
-    prop "user": new object with the same content — useMemo in Screen, then React.memo(UserCard)
-  ThemeLabel ×2 · rendered by Screen
-    ThemeContext got a new value with the same content — useMemo the Provider value
+⚠️ WhyRN: 402 avoidable re-renders
+  HeavyList ×2 · 33 ms wasted · rendered by Screen
+    2× prop "items": new object with the same content — useMemo in Screen, then React.memo(HeavyList)
+  Row ×400 · 200 instances · 25 ms wasted · rendered by HeavyList
+    400× only because HeavyList re-rendered — fix HeavyList first
 ```
 
 No DevTools window, no profiling session: it runs in your dev build and writes to Metro.
@@ -52,7 +50,8 @@ No DevTools window, no profiling session: it runs in your dev build and writes t
 
 ## Features
 
-- 🎯 **Only avoidable re-renders** — real state/prop/context changes stay quiet
+- 🎯 **Only what costs frames** — avoidable re-renders that waste ≥ 16 ms/s (configurable); real changes and cheap renders stay quiet
+- 🔗 **Root cause first** — children that render only because a flagged parent did are listed as consequences, not separate problems
 - 🔍 **Reference vs value** — deep comparison tells a new object with the same content from a real change; inline callbacks are called out
 - 🛠️ **Says where to fix it** — names the parent that creates the unstable prop, and whether `useCallback`, `useMemo` or `React.memo` is the fix
 - 🧘 **Doesn't flood Metro** — details once per problem, then one short line every 10 s
@@ -100,15 +99,17 @@ Every avoidable re-render flashes on screen with a badge, and Metro gets a summa
 
 ## Example Output
 
-By default, avoidable re-renders are batched into one summary per second:
+By default (`report="critical"`), only avoidable re-renders that waste real render time are reported, batched into one summary per second. Render time comes from React's own profiling timers, which React Native dev builds enable:
 
 ```
-⚠️ WhyRN: 11 avoidable re-renders
-  FlexChild ×2 · rendered by Screen
-    2× props are equal — wrap FlexChild in React.memo
-  Button ×2 · rendered by Counter
-    2× prop "onPress": new function every render — useCallback in Counter, then React.memo(Button)
+⚠️ WhyRN: 402 avoidable re-renders
+  HeavyList ×2 · 33 ms wasted · rendered by Screen
+    2× prop "items": new object with the same content — useMemo in Screen, then React.memo(HeavyList)
+  Row ×400 · 200 instances · 25 ms wasted · rendered by HeavyList
+    400× only because HeavyList re-rendered — fix HeavyList first
 ```
+
+`×N` counts renders across all instances; `200 instances` says how many different components that is. `only because X re-rendered` marks consequences: fix `X` and they go away.
 
 A problem already explained is not repeated; it is counted and reported as one line:
 
@@ -118,7 +119,7 @@ A problem already explained is not repeated; it is counted and reported as one l
 
 On screen, each avoidable re-render flashes with a short badge (`new fn: onPress`, `same value: user`, `equal props`).
 
-Need every render, legitimate ones included? Use `report="all"`:
+Want every avoidable re-render, cheap ones included? Use `report="avoidable"`. Every render, legitimate ones included? `report="all"`:
 
 ```
 🔁 Counter re-rendered (#9)
@@ -159,7 +160,7 @@ function UserCard(props) {
 
 ## Heatmap Mode
 
-See which component instances re-render the most. Each one keeps a tinted box while it keeps rendering; the color goes cold (blue) → hot (red) with the number of avoidable renders in the last 5 seconds, and the badge shows the count (`Button ×9 · new fn: onPress`). Boxes fade out once a component stops rendering.
+See which component instances re-render the most. Each reported instance keeps a tinted box while it keeps rendering; the color goes cold (blue) → hot (red) with the number of reported renders in the last 5 seconds, and the badge shows the count (`Button ×9 · new fn: onPress`). Boxes fade out once a component stops rendering.
 
 ```tsx
 <WhyRN heatmap>
@@ -180,7 +181,8 @@ All options are passed as props. Every prop is optional. React Native internals 
 ```tsx
 <WhyRN
   enabled={__DEV__}              // Kill switch (default: __DEV__)
-  report="avoidable"             // 'avoidable' | 'all' (default: 'avoidable')
+  report="critical"              // 'critical' | 'avoidable' | 'all' (default: 'critical')
+  criticalMs={16}                // Wasted ms per second that make a component critical (default: 16)
   trackHooks                     // Track useState/useReducer (default: true)
   logToConsole                   // Log to console (default: true)
   heatmap                        // Heatmap mode (default: false)
@@ -264,7 +266,7 @@ A plain-text overview for LLMs lives at [whyrn.dev/llms.txt](https://whyrn.dev/l
 | Highlights renders on screen | ✅ "Highlight updates" | ❌ | ✅ |
 | Says why | ⚠️ Profiler: "props changed: x" | ✅ Console | ✅ Console + badge |
 | Same content vs real change | ❌ | ✅ | ✅ |
-| Only avoidable renders | ❌ every render | ⚠️ opt-in per component | ✅ default |
+| Only renders worth fixing | ❌ every render | ⚠️ opt-in per component | ✅ avoidable + costly, by default |
 | Says where to fix it | ❌ | ❌ | ✅ parent + hook to use |
 | Needs a DevTools window / profiling session | ✅ needed | ❌ | ❌ |
 | Setup | built in | init + Babel config | one wrapper |
@@ -277,7 +279,7 @@ A plain-text overview for LLMs lives at [whyrn.dev/llms.txt](https://whyrn.dev/l
 1. `<WhyRN>` subscribes to React's commit notifications through `__REACT_DEVTOOLS_GLOBAL_HOOK__` (the same channel React DevTools uses; React Native dev builds always provide it)
 2. On every commit it walks only the parts of the fiber tree that did work, and compares each re-rendered component with its previous version: props, `useState`/`useReducer` values, context values and external stores
 3. The host views each component rendered are measured with `measureInWindow`
-4. A render is **avoidable** when no prop changed by value (only new functions or objects with the same content), no state changed except to an equal value, and no context or store pushed new content. Only those are reported unless `report="all"`
+4. A render is **avoidable** when no prop changed by value (only new functions or objects with the same content), no state changed except to an equal value, and no context or store pushed new content. By default only those that waste at least `criticalMs` of render time per second (from React's `actualDuration`) are reported; children of a reported component are folded in as consequences
 5. A global overlay flashes a border with a reason badge — or, in heatmap mode, keeps a box per component instance colored by its render rate in a 5-second window
 
 Nothing in your tree is replaced or wrapped: no patched `createElement`, no patched hooks, no extra views. Layout, component identity (`child.type === Screen` checks in navigators) and hook order stay exactly as they are.

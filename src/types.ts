@@ -48,6 +48,16 @@ export interface RenderEvent {
   owner?: string;
   /** Wrapped in React.memo. */
   memo?: boolean;
+  /** Rendered only because this (already reported) component did. */
+  follows?: string;
+  /** Render time of this component and its subtree in this commit (dev builds), ms. */
+  durationMs?: number;
+  /** Stable id of the component instance, to tell instances apart. */
+  instanceId?: number;
+  /** Renders this event stands for (a critical burst reports its whole window). */
+  count?: number;
+  /** Render time spent on avoidable renders this event stands for, ms. */
+  wastedMs?: number;
   layout?: ComponentLayout;
 }
 
@@ -67,10 +77,13 @@ export interface OverlayEntry {
 export interface WhyRNConfig {
   enabled: boolean;
   /**
-   * `avoidable` (default): only wasted re-renders — nothing the component
-   * depends on really changed. `all`: every re-render.
+   * `critical` (default): avoidable re-renders that cost real time — at least
+   * `criticalMs` of wasted render time per second for a component.
+   * `avoidable`: every wasted re-render, however cheap. `all`: every re-render.
    */
-  report: 'avoidable' | 'all';
+  report: 'critical' | 'avoidable' | 'all';
+  /** Wasted render time per second (ms) that makes a component critical. */
+  criticalMs: number;
   trackHooks: boolean;
   logToConsole: boolean;
   heatmap: boolean;

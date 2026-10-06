@@ -29,7 +29,10 @@ stores), measures host views with `measureInWindow`, and draws an overlay.
   functions count as equal, class instances by reference, bounded depth/size),
   state changed only to an equal value, and no context or store pushed new
   content. Never label a render avoidable when unsure — false positives are what
-  made the old output spam. Logging is batched (`logger.ts`): details once per
+  made the old output spam. On top of that, the default `report: 'critical'`
+  (`critical.ts`) only reports a component once its avoidable renders waste
+  `criticalMs` (16) of `fiber.actualDuration` per second; children of a
+  reported component are marked `follows` and not drawn. Logging is batched (`logger.ts`): details once per
   component + cause, repeats as one line every 10 s.
 
 ## Layout

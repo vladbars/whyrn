@@ -29,6 +29,11 @@ interface RenderMeta {
   avoidable: boolean;
   owner?: string;
   memo?: boolean;
+  follows?: string;
+  durationMs?: number;
+  instanceId?: number;
+  count?: number;
+  wastedMs?: number;
 }
 
 /** Count a re-render and log it. Without <WhyRN> mounted it still logs to the console. */
@@ -53,12 +58,17 @@ export function recordRender(
     avoidable: meta.avoidable,
     owner: meta.owner,
     memo: meta.memo,
+    follows: meta.follows,
+    durationMs: meta.durationMs,
+    instanceId: meta.instanceId,
+    count: meta.count,
+    wastedMs: meta.wastedMs,
   };
 
   if (config ? config.enabled && config.logToConsole : true) {
     // Avoidable renders are batched into a short summary; everything else
     // (report="all", withWhyRN components) is logged as it happens.
-    if (config?.report === 'avoidable' && event.avoidable) queueAvoidable(event);
+    if (config && config.report !== 'all' && event.avoidable) queueAvoidable(event);
     else formatRenderEvent(event);
   }
 

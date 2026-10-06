@@ -28,7 +28,8 @@ const ANSI = /\x1b\[[0-9;?]*[a-zA-Z]/g;
 const PREFIX = /^\s*(LOG|INFO|WARN|DEBUG)\s+/;
 
 // report="avoidable"
-const SUMMARY_ITEM = /^ {2}(\S.*?) ×(\d+)(?: · rendered by (.+))?$/;
+// "  HeavyList ×2 · 200 instances · 33 ms wasted · rendered by Screen"
+const SUMMARY_ITEM = /^ {2}(\S.*?) ×(\d+)((?: · [^·]+)*)$/;
 const SUMMARY_CAUSE = /^ {4}(?:(\d+)× )?(.+)$/;
 const STILL = /WhyRN: still avoidable — (.+?) \(same causes/;
 // report="all"
@@ -41,7 +42,7 @@ function get(name, owner) {
   const key = `${name}\u0000${owner ?? ''}`;
   let c = components.get(key);
   if (!c) {
-    c = { name, owner, renders: 0, causes: new Map() };
+    c = { name, owner, renders: 0, ms: 0, causes: new Map() };
     components.set(key, c);
   }
   return c;
@@ -92,8 +93,12 @@ for (let line of raw.replace(ANSI, '').split(/\r?\n/)) {
   if (mode === 'summary') {
     const item = line.match(SUMMARY_ITEM);
     if (item) {
-      current = get(item[1], item[3]);
+      const parts = item[3].split(' · ').map((p) => p.trim()).filter(Boolean);
+      const owner = parts.find((p) => p.startsWith('rendered by '))?.slice('rendered by '.length);
+      const ms = parts.find((p) => p.endsWith(' ms wasted'));
+      current = get(item[1], owner);
       current.renders += Number(item[2]);
+      if (ms) current.ms += parseFloat(ms);
       continue;
     }
     const cause = current && line.match(SUMMARY_CAUSE);
@@ -124,14 +129,30 @@ if (components.size === 0) {
   process.exit(1);
 }
 
-const ranked = [...components.values()].sort((a, b) => b.renders - a.renders);
+// A component whose causes are mostly "only because X re-rendered" is a
+// consequence: its time is already inside X's. Root causes first, then wasted
+// time (when known), then render count.
+function isConsequence(c) {
+  let follow = 0;
+  let other = 0;
+  for (const [cause, n] of c.causes) {
+    if (cause.startsWith('only because ')) follow += n;
+    else other += n;
+  }
+  return follow > other;
+}
+
+const ranked = [...components.values()].sort(
+  (a, b) => Number(isConsequence(a)) - Number(isConsequence(b)) || b.ms - a.ms || b.renders - a.renders
+);
 const total = ranked.reduce((sum, c) => sum + c.renders, 0);
 
 console.log(`${total} re-renders across ${ranked.length} components\n`);
 
 for (const c of ranked.slice(0, top)) {
   const by = c.owner ? `  (rendered by ${c.owner})` : '';
-  console.log(`${String(c.renders).padStart(5)}  ${c.name}${by}`);
+  const ms = c.ms > 0 ? `  ${Math.round(c.ms)} ms wasted` : '';
+  console.log(`${String(c.renders).padStart(5)}  ${c.name}${by}${ms}`);
   const causes = [...c.causes.entries()].sort((a, b) => b[1] - a[1]);
   for (const [cause, count] of causes) {
     console.log(`       ${String(count).padStart(4)}× ${cause}`);

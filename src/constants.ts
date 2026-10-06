@@ -18,7 +18,8 @@ export const INTERNAL_EXCLUDE: RegExp[] = [
 
 export const DEFAULT_CONFIG: WhyRNConfig = {
   enabled: IS_DEV,
-  report: 'avoidable',
+  report: 'critical',
+  criticalMs: 16,
   trackHooks: true,
   logToConsole: true,
   heatmap: false,

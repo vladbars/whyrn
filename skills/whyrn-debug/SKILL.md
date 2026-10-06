@@ -67,22 +67,27 @@ no wrapper view.
 Ask the user to perform the slow interaction (scroll, type, open the screen),
 or run the app yourself if you can drive a simulator.
 
-By default WhyRN reports **only avoidable re-renders** — renders where nothing
-the component depends on really changed. Legitimate renders (real state, prop
-or context changes) stay quiet, so everything in the log is worth a look. Metro
-gets one summary per second, naming the parent that creates the unstable prop:
+By default (`report="critical"`) WhyRN reports only re-renders that are both
+**avoidable** (nothing the component depends on really changed) and **costly**
+(they wasted at least `criticalMs`, 16 ms by default, of render time in a
+second — measured with React's own profiling timers). Legitimate renders and
+cheap ones stay quiet, so everything in the log is worth fixing. Metro gets one
+summary per second, naming the parent that creates the unstable prop:
 
 ```
-⚠️ WhyRN: 21 avoidable re-renders
-  Tab ×7 · rendered by TabBar
-    prop "onIndexChange": new function every render — useCallback in TabBar, then React.memo(Tab)
-  UserCard ×2 · rendered by Screen
-    prop "user": new object with the same content — useMemo in Screen, then React.memo(UserCard)
-  ThemeLabel ×2 · rendered by Screen
-    ThemeContext got a new value with the same content — useMemo the Provider value
-  FlexChild ×4 · rendered by Screen
-    props are equal — wrap FlexChild in React.memo
+⚠️ WhyRN: 402 avoidable re-renders
+  HeavyList ×2 · 33 ms wasted · rendered by Screen
+    2× prop "items": new object with the same content — useMemo in Screen, then React.memo(HeavyList)
+  Row ×400 · 200 instances · 25 ms wasted · rendered by HeavyList
+    400× only because HeavyList re-rendered — fix HeavyList first
 ```
+
+- `×N` counts renders across all instances; `K instances` says how many
+  distinct components rendered. `Icon ×12 · 12 instances` means twelve icons
+  rendered once each, not one icon twelve times.
+- `only because X re-rendered — fix X first` is a consequence. Fix `X`; do not
+  add `React.memo` to the children first.
+- Sort by `ms wasted`, not by `×N`.
 
 A problem is explained once; later occurrences only bump a counter line:
 
@@ -90,10 +95,13 @@ A problem is explained once; later occurrences only bump a counter line:
 ⚠️ WhyRN: still avoidable — Button ×51, FlexChild ×22 (same causes as above)
 ```
 
-If a screen is slow but the summary is empty, the renders are legitimate —
-switch to `report="all"` to see every render with its real cause (state,
-props, context), then reduce how often that state changes or move it lower in
-the tree.
+If a screen is slow but the summary is empty:
+
+1. `report="avoidable"` lists every wasted render, however cheap — useful when
+   many small ones add up, or to lower `criticalMs` for a slow device.
+2. `report="all"` shows every render with its real cause (state, props,
+   context). If the slow component renders legitimately, reduce how often that
+   state changes, move it lower in the tree, or virtualize the list.
 
 Save the Metro output to a file and summarize it — this ranks components by
 render count and groups their causes (works for both formats):
@@ -150,7 +158,7 @@ drop, read its new reason — the first fix often reveals the next cause.
 
 ## Reference
 
-- `<WhyRN>` props: `enabled` (`__DEV__`), `report` (`'avoidable'` | `'all'`), `heatmap`, `include`, `exclude`,
+- `<WhyRN>` props: `enabled` (`__DEV__`), `report` (`'critical'` | `'avoidable'` | `'all'`), `criticalMs` (`16`), `heatmap`, `include`, `exclude`,
   `trackHooks` (`true`), `logToConsole` (`true`), `flashDuration` (`600`),
   `flashColor`, `heatmapColdColor`, `heatmapHotColor`, `maxOverlays` (`50`).
 - `heatmap` keeps a box per component instance, colored by its render rate in

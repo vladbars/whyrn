@@ -74,6 +74,26 @@ const ThemeLabel = memo(function ThemeLabel() {
   );
 });
 
+// 8. Expensive subtree: 200 rows, and the parent passes a new array with the same items every render.
+const ITEMS = Array.from({ length: 200 }, (_, i) => `row ${i}`);
+
+function Row({ label }: { label: string }) {
+  return <Text style={styles.listRow}>{label}</Text>;
+}
+
+function HeavyList({ items }: { items: string[] }) {
+  return (
+    <View style={styles.card}>
+      <Text style={styles.title}>HeavyList (200 rows, new array each render)</Text>
+      <View style={styles.listRows}>
+        {items.map((item) => (
+          <Row key={item} label={item} />
+        ))}
+      </View>
+    </View>
+  );
+}
+
 // 6. Explicit HOC
 function Tagged({ value }: { value: number }) {
   useRenderCount('Tagged');
@@ -125,6 +145,7 @@ function Screen() {
         <ThemeLabel />
       </ThemeContext.Provider>
       <TrackedTagged value={tick} />
+      <HeavyList items={ITEMS.slice()} />
     </ScrollView>
   );
 }
@@ -153,4 +174,6 @@ const styles = StyleSheet.create({
   title: { fontWeight: '600' },
   button: { backgroundColor: '#111827', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 6, alignSelf: 'flex-start' },
   buttonText: { color: '#fff' },
+  listRows: { flexDirection: 'row', flexWrap: 'wrap', gap: 4 },
+  listRow: { fontSize: 9, color: '#6b7280' },
 });

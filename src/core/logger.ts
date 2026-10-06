@@ -56,9 +56,26 @@ export function formatRenderEvent(event: RenderEvent): void {
 interface Summary {
   name: string;
   count: number;
+  /** Wasted render time, when React recorded timings. */
+  ms?: number;
+  instances: Set<number>;
   owner?: string;
   memo: boolean;
+  /** Only renders because a reported component did. Listed after the root causes. */
+  follows?: string;
   causes: Map<string, number>;
+}
+
+function formatMs(ms: number): string {
+  return ms >= 10 ? `${Math.round(ms)} ms` : `${ms.toFixed(1)} ms`;
+}
+
+function describe(s: Summary): string {
+  const parts = [`${s.name} ×${s.count}`];
+  if (s.instances.size > 1) parts.push(`${s.instances.size} instances`);
+  if (s.ms !== undefined) parts.push(`${formatMs(s.ms)} wasted`);
+  if (s.owner) parts.push(`rendered by ${s.owner}`);
+  return parts.join(' · ');
 }
 
 const pending = new Map<string, Summary>();
@@ -70,6 +87,10 @@ function where(owner: string | undefined): string {
 
 /** Turn a reason into a short, actionable line. Identical lines are counted. */
 function causesOf(event: RenderEvent): string[] {
+  if (event.follows) {
+    return [`only because ${event.follows} re-rendered — fix ${event.follows} first`];
+  }
+
   const causes: string[] = [];
   const functions: string[] = [];
   const objects: string[] = [];
@@ -130,7 +151,9 @@ function flush(): void {
   flushTimer = null;
   if (pending.size === 0) return;
 
-  const summaries = [...pending.values()].sort((a, b) => b.count - a.count);
+  const summaries = [...pending.values()].sort(
+    (a, b) => Number(!!a.follows) - Number(!!b.follows) || (b.ms ?? 0) - (a.ms ?? 0) || b.count - a.count
+  );
   pending.clear();
 
   const fresh: Summary[] = [];
@@ -150,8 +173,7 @@ function flush(): void {
     const lines = [`⚠️ WhyRN: ${total} avoidable re-render${total === 1 ? '' : 's'}`];
 
     for (const s of fresh) {
-      const by = s.owner ? ` · rendered by ${s.owner}` : '';
-      lines.push(`  ${s.name} ×${s.count}${by}`);
+      lines.push(`  ${describe(s)}`);
       for (const [cause, n] of s.causes) {
         lines.push(`    ${n > 1 ? `${n}× ` : ''}${cause}`);
       }
@@ -175,13 +197,24 @@ export function queueAvoidable(event: RenderEvent): void {
   const key = `${event.componentName}\u0000${event.owner ?? ''}`;
   let summary = pending.get(key);
   if (!summary) {
-    summary = { name: event.componentName, count: 0, owner: event.owner, memo: !!event.memo, causes: new Map() };
+    summary = {
+      name: event.componentName,
+      count: 0,
+      instances: new Set(),
+      owner: event.owner,
+      memo: !!event.memo,
+      follows: event.follows,
+      causes: new Map(),
+    };
     pending.set(key, summary);
   }
 
-  summary.count++;
+  const n = event.count ?? 1;
+  summary.count += n;
+  if (event.wastedMs !== undefined) summary.ms = (summary.ms ?? 0) + event.wastedMs;
+  if (event.instanceId !== undefined) summary.instances.add(event.instanceId);
   for (const cause of causesOf(event)) {
-    summary.causes.set(cause, (summary.causes.get(cause) ?? 0) + 1);
+    summary.causes.set(cause, (summary.causes.get(cause) ?? 0) + n);
   }
 
   if (flushTimer === null) flushTimer = setTimeout(flush, FLUSH_MS);
