@@ -1,6 +1,6 @@
 {
   "name": "whyrn.dev",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "See exactly why your React Native components re-render",
   "main": "lib/commonjs/index.js",
   "module": "lib/module/index.js",
