@@ -114,10 +114,12 @@ By default (`report="critical"`), only avoidable re-renders that waste real rend
 
 `×N` counts renders across all instances; `200 instances` says how many different components that is. `only because X re-rendered` marks consequences: fix `X` and they go away. `at …/File.tsx:line:col` is the JSX in the parent that renders the component — where the unstable prop is created. Click it in the React Native DevTools console and the editor opens at that line (the browser asks once to allow `vscode://` links). Use the `editor` prop for another editor, or `editor="none"` for plain paths in a terminal. Locations come from React's dev element stacks, symbolicated by Metro; tapping a badge opens the same line through Metro's `open-stack-frame` (set `REACT_EDITOR` if the wrong editor opens).
 
-A problem already explained is not repeated; it is counted and reported as one line:
+A problem already explained is not repeated in full; repeats are counted and summarized every 10 s, still with links:
 
 ```
-⚠️ WhyRN: still avoidable — Button ×51, FlexChild ×22, UserCard ×11 (same causes as above)
+⚠️ WhyRN: still avoidable (same causes as above)
+  HeavyList ×10 · 140 ms wasted · rendered by Screen
+    at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7
 ```
 
 On screen, each avoidable re-render flashes with a short badge (`new fn: onPress`, `same value: user`, `equal props`).

@@ -94,10 +94,12 @@ summary per second, naming the parent that creates the unstable prop:
   get the file path; open that file and line — the unstable prop is created
   right there.
 
-A problem is explained once; later occurrences only bump a counter line:
+A problem is explained once; later occurrences are summarized every 10 s (count, wasted time, link):
 
 ```
-⚠️ WhyRN: still avoidable — Button ×51, FlexChild ×22 (same causes as above)
+⚠️ WhyRN: still avoidable (same causes as above)
+  HeavyList ×10 · 140 ms wasted · rendered by Screen
+    at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7
 ```
 
 If a screen is slow but the summary is empty:

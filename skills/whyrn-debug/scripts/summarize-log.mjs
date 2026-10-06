@@ -76,7 +76,7 @@ for (let line of raw.replace(ANSI, '').split(/\r?\n/)) {
     continue;
   }
 
-  if (/WhyRN: \d+ avoidable re-render/.test(line)) {
+  if (/WhyRN: \d+ avoidable re-render/.test(line) || /WhyRN: still avoidable \(/.test(line)) {
     mode = 'summary';
     current = null;
     continue;
@@ -101,6 +101,8 @@ for (let line of raw.replace(ANSI, '').split(/\r?\n/)) {
       if (ms) current.ms += parseFloat(ms);
       continue;
     }
+    // "    at vscode://file/…" is a source link, not a cause.
+    if (current && /^ {4}at /.test(line)) continue;
     const cause = current && line.match(SUMMARY_CAUSE);
     if (cause) {
       const n = Number(cause[1] ?? 1);

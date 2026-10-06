@@ -147,7 +147,8 @@ function causesOf(event: RenderEvent): string[] {
 // and reported as one short line every QUIET_MS, so a busy screen can't flood Metro.
 const QUIET_MS = 10000;
 const seenCauses = new Set<string>();
-const quiet = new Map<string, number>();
+// Repeats since the last reminder, per component + owner.
+const quiet = new Map<string, Summary>();
 let lastQuietLog = 0;
 
 function flush(): void {
@@ -167,7 +168,14 @@ function flush(): void {
       unseen.forEach((cause) => seenCauses.add(`${id}\u0000${cause}`));
       fresh.push(s);
     } else {
-      quiet.set(s.name, (quiet.get(s.name) ?? 0) + s.count);
+      const q = quiet.get(id);
+      if (q) {
+        q.count += s.count;
+        if (s.ms !== undefined) q.ms = (q.ms ?? 0) + s.ms;
+        s.instances.forEach((i) => q.instances.add(i));
+      } else {
+        quiet.set(id, { ...s, instances: new Set(s.instances), causes: new Map() });
+      }
     }
   }
 
@@ -195,12 +203,27 @@ function flush(): void {
 
   const now = Date.now();
   if (quiet.size > 0 && now - lastQuietLog >= QUIET_MS) {
-    const top = [...quiet.entries()].sort((a, b) => b[1] - a[1]);
-    const list = top.slice(0, 6).map(([name, n]) => `${name} ×${n}`).join(', ');
-    const more = top.length > 6 ? `, +${top.length - 6} more` : '';
-    console.log(`⚠️ WhyRN: still avoidable — ${list}${more} (same causes as above)`);
+    // A reminder that still links to the code: the detailed block may be far up.
+    const top = [...quiet.values()].sort(
+      (a, b) => Number(!!a.follows) - Number(!!b.follows) || (b.ms ?? 0) - (a.ms ?? 0) || b.count - a.count
+    );
     quiet.clear();
     lastQuietLog = now;
+
+    const shown = top.slice(0, 6);
+    Promise.all(shown.map((s) => (s.follows ? Promise.resolve(undefined) : resolveSource(s.source)))).then(
+      (locations) => {
+        const lines = ['⚠️ WhyRN: still avoidable (same causes as above)'];
+        shown.forEach((s, i) => {
+          lines.push(`  ${describe(s)}`);
+          const location = locations[i];
+          if (s.follows) lines.push(`    only because ${s.follows} re-rendered`);
+          else if (location) lines.push(`    at ${formatLocation(location, getConfig()?.editor)}`);
+        });
+        if (top.length > shown.length) lines.push(`  … +${top.length - shown.length} more`);
+        console.log(lines.join('\n'));
+      }
+    );
   }
 }
 
