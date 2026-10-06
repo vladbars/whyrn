@@ -119,6 +119,15 @@ export function openInEditor(location: SourceLocation): void {
   }).catch(() => {});
 }
 
+/**
+ * A clickable location for the console. React Native DevTools knows original
+ * files under the dev server origin (source map paths are resolved against the
+ * bundle URL), so `http://host:8081/abs/path/File.tsx:12:3` opens the file in
+ * the Sources panel — and its "Open in external editor" button opens your IDE.
+ */
 export function formatLocation(location: SourceLocation): string {
-  return `${location.file}:${location.lineNumber}${location.column !== undefined ? `:${location.column}` : ''}`;
+  const position = `${location.lineNumber}${location.column !== undefined ? `:${location.column}` : ''}`;
+  const server = getDevServer();
+  const file = location.file.startsWith('/') && server ? `${server}${encodeURI(location.file)}` : location.file;
+  return `${file}:${position}`;
 }
