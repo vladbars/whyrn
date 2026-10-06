@@ -1,7 +1,7 @@
 import React, { memo, useCallback, useEffect, useReducer, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { WhyRN, withWhyRN, useRenderCount } from 'whyrn.dev';
+import { WhyRN, withWhyRN, useRenderCount } from 'whyrn';
 
 // Drives state updates on timers so the overlay can be checked without tapping.
 const SELF_TEST = false;

@@ -5,7 +5,7 @@ app, see the `whyrn-debug` skill in [`skills/whyrn-debug/`](skills/whyrn-debug/S
 
 ## What this is
 
-`whyrn.dev` (npm) shows why React Native components re-render. It subscribes to
+`whyrn` (npm) shows why React Native components re-render. It subscribes to
 React commits via `__REACT_DEVTOOLS_GLOBAL_HOOK__.onCommitFiberRoot`, diffs each
 re-rendered fiber against its `alternate` (props, hook state, context, external
 stores), measures host views with `measureInWindow`, and draws an overlay.
@@ -50,7 +50,7 @@ bun run build          # bob build → lib/
 npm pack --dry-run     # check published files (src, lib, skills)
 ```
 
-Manual test on a simulator (resolves `whyrn.dev` from `../src`, hot-reloads):
+Manual test on a simulator (resolves `whyrn` from `../src`, hot-reloads):
 
 ```bash
 cd example && bun install && bunx expo start --ios
