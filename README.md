@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/logo.svg" alt="WhyRN" width="120" />
+  <img src="https://raw.githubusercontent.com/vladbars/whyrn/main/assets/logo.svg" alt="WhyRN" width="120" />
 </p>
 
 <h1 align="center">WhyRN</h1>
@@ -15,6 +15,10 @@
 </p>
 
 ---
+
+<p align="center">
+  <img src="https://raw.githubusercontent.com/vladbars/whyrn/main/assets/demo.gif" alt="WhyRN demo: components flash with a badge explaining each re-render" width="320" />
+</p>
 
 > Components flash on re-render. A badge tells you *why*. No more guessing.
 
@@ -93,21 +97,11 @@ When a component re-renders, you see this in the console:
   state[0] changed: 1 → 2
 ```
 
-And on screen:
+And on screen — every re-rendered component flashes, and the badge says why:
 
-```
-┌──────────────────────────────┐
-│ UserCard — props: user       │  ← badge
-├──────────────────────────────┤
-│                              │
-│     ┌─── red border ───┐    │  ← flash overlay
-│     │                   │    │
-│     │    UserCard       │    │
-│     │                   │    │
-│     └───────────────────┘    │
-│                              │
-└──────────────────────────────┘
-```
+<p align="center">
+  <img src="https://raw.githubusercontent.com/vladbars/whyrn/main/assets/screenshot.png" alt="Overlay with reason badges: Counter state[0]: 14 → 15, UserCard props: user" width="360" />
+</p>
 
 ---
 
