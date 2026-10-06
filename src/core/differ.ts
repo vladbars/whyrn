@@ -151,7 +151,7 @@ export function buildReasons(
 /**
  * A render is avoidable when nothing the component depends on really changed:
  * props only changed by reference, state was set to an equal value, context and
- * stores pushed equal content — or the parent rendered with equal props.
+ * stores pushed equal content - or the parent rendered with equal props.
  */
 export function isAvoidable(reasons: RenderReason[]): boolean {
   for (const reason of reasons) {

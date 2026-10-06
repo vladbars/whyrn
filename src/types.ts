@@ -29,7 +29,7 @@ export interface StateChange {
   hookName: string;
   prev: unknown;
   next: unknown;
-  /** New reference with the same content — the update could have been skipped. */
+  /** New reference with the same content - the update could have been skipped. */
   equivalent?: boolean;
 }
 
@@ -47,7 +47,7 @@ export interface RenderEvent {
   renderCount: number;
   timestamp: number;
   reasons: RenderReason[];
-  /** Nothing this component depends on really changed — the render was wasted. */
+  /** Nothing this component depends on really changed - the render was wasted. */
   avoidable: boolean;
   /** Component that rendered this one (where unstable props come from). */
   owner?: string;
@@ -84,7 +84,7 @@ export interface OverlayEntry {
 export interface WhyRNConfig {
   enabled: boolean;
   /**
-   * `critical` (default): avoidable re-renders that cost real time — at least
+   * `critical` (default): avoidable re-renders that cost real time - at least
    * `criticalMs` of wasted render time per second for a component.
    * `avoidable`: every wasted re-render, however cheap. `all`: every re-render.
    */

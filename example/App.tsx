@@ -43,7 +43,7 @@ const MemoBox = memo(function MemoBox({ label }: { label: string }) {
   );
 });
 
-// 4. Root uses flex: 1 inside a fixed-height row — a wrapper View would collapse it.
+// 4. Root uses flex: 1 inside a fixed-height row - a wrapper View would collapse it.
 function FlexChild({ color }: { color: string }) {
   return <View style={{ flex: 1, backgroundColor: color, borderRadius: 6 }} />;
 }

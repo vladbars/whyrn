@@ -214,7 +214,7 @@ function handleCommit(root: FiberRoot | undefined): void {
 
   // Decide per chain. Its cost is the render time it caused: the root's whole
   // subtree time, minus subtrees that rendered for other reasons (legitimate
-  // renders, other chains) — those are not this chain's fault.
+  // renders, other chains) - those are not this chain's fault.
   const chains = new Map<Fiber, Candidate[]>();
   const memberOf = new Map<Fiber, Candidate>();
   for (const c of candidates) {

@@ -6,7 +6,7 @@ description: Find out why React Native components re-render and fix the unnecess
 # Debugging React Native re-renders with WhyRN
 
 `whyrn.dev` observes React commits and reports the **avoidable** re-renders:
-components that rendered although nothing they depend on really changed — a
+components that rendered although nothing they depend on really changed - a
 new function or an object with the same content as a prop, a context value
 with the same content, or equal props from a parent that rendered. For each it
 names the parent to fix and the fix (`useCallback`, `useMemo`, `React.memo`).
@@ -46,7 +46,7 @@ export default function App() {
 }
 ```
 
-Narrow the scope when the user names a screen or component — otherwise the
+Narrow the scope when the user names a screen or component - otherwise the
 log is noisy:
 
 ```tsx
@@ -59,7 +59,7 @@ skipped. `<WhyRN>` is inert when `__DEV__` is false, so leaving it in place is
 safe for release builds.
 
 To track a single component without touching the root, use
-`export default withWhyRN(ProductRow)` — it returns the same component, with
+`export default withWhyRN(ProductRow)` - it returns the same component, with
 no wrapper view.
 
 ## 3. Reproduce and read the log
@@ -70,7 +70,7 @@ or run the app yourself if you can drive a simulator.
 By default (`report="critical"`) WhyRN reports only re-renders that are both
 **avoidable** (nothing the component depends on really changed) and **costly**
 (they wasted at least `criticalMs`, 16 ms by default, of render time in a
-second — measured with React's own profiling timers). Legitimate renders and
+second - measured with React's own profiling timers). Legitimate renders and
 cheap ones stay quiet, so everything in the log is worth fixing. Metro gets one
 summary per second, naming the parent that creates the unstable prop:
 
@@ -78,20 +78,20 @@ summary per second, naming the parent that creates the unstable prop:
 ⚠️ WhyRN: 402 avoidable re-renders
   HeavyList ×2 · 33 ms wasted · rendered by Screen
     at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7
-    2× prop "items": new object with the same content — useMemo in Screen, then React.memo(HeavyList)
+    2× prop "items": new object with the same content - useMemo in Screen, then React.memo(HeavyList)
   Row ×400 · 200 instances · rendered by HeavyList
-    400× only because HeavyList re-rendered — fix HeavyList first
+    400× only because HeavyList re-rendered - fix HeavyList first
 ```
 
 - `×N` counts renders across all instances; `K instances` says how many
   distinct components rendered. `Icon ×12 · 12 instances` means twelve icons
   rendered once each, not one icon twelve times.
-- `only because X re-rendered — fix X first` is a consequence. Fix `X`; do not
+- `only because X re-rendered - fix X first` is a consequence. Fix `X`; do not
   add `React.memo` to the children first.
 - Sort by `ms wasted`, not by `×N`.
 - `at vscode://file/abs/path/File.tsx:line:col` is the JSX that renders the
   component. Strip the `vscode://file` prefix (or the editor scheme in use) to
-  get the file path; open that file and line — the unstable prop is created
+  get the file path; open that file and line - the unstable prop is created
   right there.
 
 A problem is explained once; later occurrences are summarized every 10 s (count, wasted time, link):
@@ -104,13 +104,13 @@ A problem is explained once; later occurrences are summarized every 10 s (count,
 
 If a screen is slow but the summary is empty:
 
-1. `report="avoidable"` lists every wasted render, however cheap — useful when
+1. `report="avoidable"` lists every wasted render, however cheap - useful when
    many small ones add up, or to lower `criticalMs` for a slow device.
 2. `report="all"` shows every render with its real cause (state, props,
    context). If the slow component renders legitimately, reduce how often that
    state changes, move it lower in the tree, or virtualize the list.
 
-Save the Metro output to a file and summarize it — this ranks components by
+Save the Metro output to a file and summarize it - this ranks components by
 render count and groups their causes (works for both formats):
 
 ```bash
@@ -125,17 +125,17 @@ script also reads from stdin.
 
 | Summary line | Cause | Fix |
 |---|---|---|
-| `prop "x": new object with the same content — useMemo in P` | Object/array/JSX literal created during `P`'s render | `useMemo` in `P`, or hoist the constant out of the component |
-| `prop "onX": new function every render — useCallback in P` | Inline arrow function / unmemoized handler in `P` | `useCallback` in `P` (with correct deps) |
-| `props are equal — wrap C in React.memo` | `C` re-renders only because its parent did | `React.memo(C)` |
+| `prop "x": new object with the same content - useMemo in P` | Object/array/JSX literal created during `P`'s render | `useMemo` in `P`, or hoist the constant out of the component |
+| `prop "onX": new function every render - useCallback in P` | Inline arrow function / unmemoized handler in `P` | `useCallback` in `P` (with correct deps) |
+| `props are equal - wrap C in React.memo` | `C` re-renders only because its parent did | `React.memo(C)` |
 | `… (they defeat React.memo(C))` | `C` is memoized, but receives unstable props | Fix the props in the parent; the memo then starts working |
-| `XContext got a new value with the same content — useMemo the Provider value` | Provider passes a new `value` object each render | `useMemo` the provider value; split fast- and slow-changing data into separate contexts |
+| `XContext got a new value with the same content - useMemo the Provider value` | Provider passes a new `value` object each render | `useMemo` the provider value; split fast- and slow-changing data into separate contexts |
 | `Store selector returned a new object with the same content` | Selector builds a new object/array | Select primitives, or use a shallow-equal selector (e.g. `useShallow` in Zustand) |
-| `state[i] set to an equal value — keep the previous object` | `setState` called with a fresh but equal object | Return the previous state when nothing changed |
+| `state[i] set to an equal value - keep the previous object` | `setState` called with a fresh but equal object | Return the previous state when nothing changed |
 
 With `report="all"`, the per-render lines mean: `prop "x" changed: a → b` and
 `state[i] changed: a → b` are real changes (usually fine); `XContext value
-changed` means the provider value really changed — consider splitting the
+changed` means the provider value really changed - consider splitting the
 context if this consumer only needs part of it.
 
 Rules:
@@ -155,7 +155,7 @@ Rules:
 
 Reproduce the same interaction and summarize the new log. Report the before
 and after render counts for the components you changed. If a count did not
-drop, read its new reason — the first fix often reveals the next cause.
+drop, read its new reason - the first fix often reveals the next cause.
 
 ## 6. Finish
 
@@ -169,7 +169,7 @@ drop, read its new reason — the first fix often reveals the next cause.
   `trackHooks` (`true`), `logToConsole` (`true`), `flashDuration` (`600`),
   `flashColor`, `heatmapColdColor`, `heatmapHotColor`, `maxOverlays` (`50`).
 - `heatmap` keeps a box per component instance, colored by its render rate in
-  the last 5 s, with a `×N` count — useful to find the hottest spot on screen.
+  the last 5 s, with a `×N` count - useful to find the hottest spot on screen.
 - `useWhyRN(name, props)` returns the reasons for the current render as data.
 - `useRenderCount(name?)` returns the render count and optionally logs it.
 - Docs: https://whyrn.dev · https://github.com/vladbars/whyrn

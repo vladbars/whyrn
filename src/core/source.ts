@@ -1,9 +1,9 @@
-// Source locations for reported components, via the Metro dev server — the same
+// Source locations for reported components, via the Metro dev server - the same
 // endpoints LogBox uses: /symbolicate turns a bundle stack into original files,
 // /open-stack-frame opens a file in the editor (REACT_EDITOR / your IDE).
 //
 // The location is the JSX that rendered the component, i.e. the line in the
-// parent where the unstable prop is created — exactly where the fix goes.
+// parent where the unstable prop is created - exactly where the fix goes.
 
 import { NativeModules } from 'react-native';
 import type { EditorOption } from '../types';

@@ -58,7 +58,7 @@ export function ReasonBadge({ entry }: ReasonBadgeProps): React.ReactElement {
       hitSlop={6}
     >
       <Text style={styles.text} numberOfLines={1}>
-        {entry.event.componentName} — {reasonLabel(entry.event)}
+        {entry.event.componentName} - {reasonLabel(entry.event)}
       </Text>
     </Pressable>
   );

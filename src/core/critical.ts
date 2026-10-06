@@ -1,6 +1,6 @@
 // Decides which avoidable re-renders are worth interrupting the developer for.
 // A component (name + owner) is critical once its wasted render time in the
-// last second reaches the threshold — a cheap icon rendering once never gets
+// last second reaches the threshold - a cheap icon rendering once never gets
 // there, a heavy subtree or a component re-rendering on every animation frame
 // does. Without timing data (no profiling) each render counts as a tenth of the
 // threshold, i.e. ~10 avoidable renders per second.

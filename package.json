@@ -1,7 +1,7 @@
 {
   "name": "whyrn.dev",
-  "version": "0.6.1",
-  "description": "See exactly why your React Native components re-render — on screen and in Metro. Ships an agent skill for Claude Code and Codex.",
+  "version": "0.6.2",
+  "description": "See exactly why your React Native components re-render - on screen and in Metro. Ships an agent skill for Claude Code and Codex.",
   "main": "lib/commonjs/index.js",
   "module": "lib/module/index.js",
   "types": "lib/typescript/index.d.ts",

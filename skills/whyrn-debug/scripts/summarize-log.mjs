@@ -31,7 +31,7 @@ const PREFIX = /^\s*(LOG|INFO|WARN|DEBUG)\s+/;
 // "  HeavyList ×2 · 200 instances · 33 ms wasted · rendered by Screen"
 const SUMMARY_ITEM = /^ {2}(\S.*?) ×(\d+)((?: · [^·]+)*)$/;
 const SUMMARY_CAUSE = /^ {4}(?:(\d+)× )?(.+)$/;
-const STILL = /WhyRN: still avoidable — (.+?) \(same causes/;
+const STILL = /WhyRN: still avoidable - (.+?) \(same causes/;
 // report="all"
 const RENDER = /🔁\s+(.+?) re-rendered \(#\d+\)/;
 const RENDER_REASON = /^ {2}(\S.*)$/;

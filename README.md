@@ -20,7 +20,7 @@
   <img src="https://raw.githubusercontent.com/vladbars/whyrn/main/assets/demo.gif" alt="WhyRN demo: components flash with a badge explaining each re-render" width="320" />
 </p>
 
-> Finds the re-renders that cost you frames — and tells you what to change, and where.
+> Finds the re-renders that cost you frames - and tells you what to change, and where.
 
 ---
 
@@ -34,15 +34,15 @@ Ever stared at your React Native app and asked:
 
 React DevTools can already **highlight** every component that renders, and its Profiler lists "props changed: style". That is a lot of boxes, and most of them are fine: state really changed, so the component had to render.
 
-**WhyRN reports only the renders worth fixing**: nothing the component depends on really changed, *and* those wasted renders cost real time — by default at least 16 ms (a frame) per second. A cheap icon rendering once more stays quiet; a heavy list rebuilt on every tick does not:
+**WhyRN reports only the renders worth fixing**: nothing the component depends on really changed, *and* those wasted renders cost real time - by default at least 16 ms (a frame) per second. A cheap icon rendering once more stays quiet; a heavy list rebuilt on every tick does not:
 
 ```
 ⚠️ WhyRN: 402 avoidable re-renders
   HeavyList ×2 · 33 ms wasted · rendered by Screen
     at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7
-    2× prop "items": new object with the same content — useMemo in Screen, then React.memo(HeavyList)
+    2× prop "items": new object with the same content - useMemo in Screen, then React.memo(HeavyList)
   Row ×400 · 200 instances · rendered by HeavyList
-    400× only because HeavyList re-rendered — fix HeavyList first
+    400× only because HeavyList re-rendered - fix HeavyList first
 ```
 
 No DevTools window, no profiling session: it runs in your dev build and writes to Metro.
@@ -51,23 +51,23 @@ No DevTools window, no profiling session: it runs in your dev build and writes t
 
 ## Features
 
-- 🎯 **Only what costs frames** — avoidable re-renders that waste ≥ 16 ms/s (configurable); real changes and cheap renders stay quiet
-- 🔗 **Root cause first** — children that render only because a flagged parent did are listed as consequences, not separate problems
-- 🧭 **Jump to the code** — every problem links to the JSX that renders it — click it in the React Native DevTools console and your editor opens at that line (`editor="vscode"` by default; Cursor, Windsurf, Zed, WebStorm, IDEA or your own URL); tap a badge on the device for the same
-- 🔍 **Reference vs value** — deep comparison tells a new object with the same content from a real change; inline callbacks are called out
-- 🛠️ **Says where to fix it** — names the parent that creates the unstable prop, and whether `useCallback`, `useMemo` or `React.memo` is the fix
-- 🧘 **Doesn't flood Metro** — details once per problem, then one short line every 10 s
-- 🌡️ **Heatmap** — persistent boxes, cold → hot by how often each instance renders
-- 🤖 **Agent skill included** — Claude Code / Codex can measure and fix re-renders for you
-- ⚡ **Zero config** — wrap your app, done
-- 🪶 **Zero dependencies** — only React and React Native as peers
-- 🔇 **Dev only** — hard `__DEV__` guard at every entry point; inert in release builds
+- 🎯 **Only what costs frames** - avoidable re-renders that waste ≥ 16 ms/s (configurable); real changes and cheap renders stay quiet
+- 🔗 **Root cause first** - children that render only because a flagged parent did are listed as consequences, not separate problems
+- 🧭 **Jump to the code** - every problem links to the JSX that renders it - click it in the React Native DevTools console and your editor opens at that line (`editor="vscode"` by default; Cursor, Windsurf, Zed, WebStorm, IDEA or your own URL); tap a badge on the device for the same
+- 🔍 **Reference vs value** - deep comparison tells a new object with the same content from a real change; inline callbacks are called out
+- 🛠️ **Says where to fix it** - names the parent that creates the unstable prop, and whether `useCallback`, `useMemo` or `React.memo` is the fix
+- 🧘 **Doesn't flood Metro** - details once per problem, then one short line every 10 s
+- 🌡️ **Heatmap** - persistent boxes, cold → hot by how often each instance renders
+- 🤖 **Agent skill included** - Claude Code / Codex can measure and fix re-renders for you
+- ⚡ **Zero config** - wrap your app, done
+- 🪶 **Zero dependencies** - only React and React Native as peers
+- 🔇 **Dev only** - hard `__DEV__` guard at every entry point; inert in release builds
 
 ---
 
 ## Install
 
-Install as a **dev dependency** — whyrn is a debug tool and has no place in production bundles:
+Install as a **dev dependency** - whyrn is a debug tool and has no place in production bundles:
 
 ```bash
 npm install -D whyrn.dev
@@ -107,12 +107,12 @@ By default (`report="critical"`), only avoidable re-renders that waste real rend
 ⚠️ WhyRN: 402 avoidable re-renders
   HeavyList ×2 · 33 ms wasted · rendered by Screen
     at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7
-    2× prop "items": new object with the same content — useMemo in Screen, then React.memo(HeavyList)
+    2× prop "items": new object with the same content - useMemo in Screen, then React.memo(HeavyList)
   Row ×400 · 200 instances · rendered by HeavyList
-    400× only because HeavyList re-rendered — fix HeavyList first
+    400× only because HeavyList re-rendered - fix HeavyList first
 ```
 
-`×N` counts renders across all instances; `200 instances` says how many different components that is. `only because X re-rendered` marks consequences: fix `X` and they go away. `at …/File.tsx:line:col` is the JSX in the parent that renders the component — where the unstable prop is created. Click it in the React Native DevTools console and the editor opens at that line (the browser asks once to allow `vscode://` links). Use the `editor` prop for another editor, or `editor="none"` for plain paths in a terminal. Locations come from React's dev element stacks, symbolicated by Metro; tapping a badge opens the same line through Metro's `open-stack-frame` (set `REACT_EDITOR` if the wrong editor opens).
+`×N` counts renders across all instances; `200 instances` says how many different components that is. `only because X re-rendered` marks consequences: fix `X` and they go away. `at …/File.tsx:line:col` is the JSX in the parent that renders the component - where the unstable prop is created. Click it in the React Native DevTools console and the editor opens at that line (the browser asks once to allow `vscode://` links). Use the `editor` prop for another editor, or `editor="none"` for plain paths in a terminal. Locations come from React's dev element stacks, symbolicated by Metro; tapping a badge opens the same line through Metro's `open-stack-frame` (set `REACT_EDITOR` if the wrong editor opens).
 
 A problem already explained is not repeated in full; repeats are counted and summarized every 10 s, still with links:
 
@@ -129,7 +129,7 @@ Want every avoidable re-render, cheap ones included? Use `report="avoidable"`. E
 ```
 🔁 Counter re-rendered (#9)
   state[0] changed: 8 → 9
-🔁 UserCard re-rendered (#4) — avoidable
+🔁 UserCard re-rendered (#4) - avoidable
   prop "user" changed (new reference, same value): {"name":"Alice"} → {"name":"Alice"}
 ```
 
@@ -181,7 +181,7 @@ See which component instances re-render the most. Each reported instance keeps a
 
 ## Configuration
 
-All options are passed as props. Every prop is optional. React Native internals (`View`, `Text`, `Pressable`, `Animated*`, `RCT*`, …) and internals of common libraries (react-navigation, react-native-screens, gesture-handler, fast-image) are always skipped — their props are not yours to fix.
+All options are passed as props. Every prop is optional. React Native internals (`View`, `Text`, `Pressable`, `Animated*`, `RCT*`, …) and internals of common libraries (react-navigation, react-native-screens, gesture-handler, fast-image) are always skipped - their props are not yours to fix.
 
 ```tsx
 <WhyRN
@@ -213,7 +213,7 @@ Root provider. Tracks every component below it, draws the overlay and logs the s
 
 ### `withWhyRN(Component, name?)`
 
-Marks a specific component as tracked and returns the same component (no wrapper). Every re-render of it is logged, avoidable or not. Works with or without `<WhyRN>` — without it, re-renders are logged to the console only.
+Marks a specific component as tracked and returns the same component (no wrapper). Every re-render of it is logged, avoidable or not. Works with or without `<WhyRN>` - without it, re-renders are logged to the console only.
 
 ### `useWhyRN(name, props)`
 
@@ -237,7 +237,7 @@ ln -s ../../node_modules/whyrn.dev/skills/whyrn-debug .claude/skills/whyrn-debug
 ln -s ../../node_modules/whyrn.dev/skills/whyrn-debug .agents/skills/whyrn-debug
 ```
 
-Then ask — the agent picks the skill up from a plain request, or invoke it explicitly:
+Then ask - the agent picks the skill up from a plain request, or invoke it explicitly:
 
 ```
 /whyrn-debug The product list stutters while scrolling. Find out why and fix it.   # Claude Code
@@ -254,11 +254,11 @@ node node_modules/whyrn.dev/skills/whyrn-debug/scripts/summarize-log.mjs metro.l
 779 re-renders across 11 components
 
   302  Button  (rendered by Screen)
-          2× prop "onPress": new function every render — useCallback in Screen, then React.memo(Button)
+          2× prop "onPress": new function every render - useCallback in Screen, then React.memo(Button)
   132  FlexChild  (rendered by Screen)
-          4× props are equal — wrap FlexChild in React.memo
+          4× props are equal - wrap FlexChild in React.memo
    66  ThemeLabel  (rendered by Screen)
-          2× ThemeContext got a new value with the same content — useMemo the Provider value
+          2× ThemeContext got a new value with the same content - useMemo the Provider value
 ```
 
 A plain-text overview for LLMs lives at [whyrn.dev/llms.txt](https://whyrn.dev/llms.txt).
@@ -286,11 +286,11 @@ A plain-text overview for LLMs lives at [whyrn.dev/llms.txt](https://whyrn.dev/l
 2. On every commit it walks only the parts of the fiber tree that did work, and compares each re-rendered component with its previous version: props, `useState`/`useReducer` values, context values and external stores
 3. The host views each component rendered are measured with `measureInWindow`
 4. A render is **avoidable** when no prop changed by value (only new functions or objects with the same content), no state changed except to an equal value, and no context or store pushed new content. By default only those that waste at least `criticalMs` of render time per second (from React's `actualDuration`) are reported; children of a reported component are folded in as consequences
-5. A global overlay flashes a border with a reason badge — or, in heatmap mode, keeps a box per component instance colored by its render rate in a 5-second window
+5. A global overlay flashes a border with a reason badge - or, in heatmap mode, keeps a box per component instance colored by its render rate in a 5-second window
 
 Nothing in your tree is replaced or wrapped: no patched `createElement`, no patched hooks, no extra views. Layout, component identity (`child.type === Screen` checks in navigators) and hook order stay exactly as they are.
 
-**Production safety:** every entry point (`<WhyRN>`, `withWhyRN`, `useWhyRN`, `useRenderCount`) checks `__DEV__` at the top. In release builds the entire library is inert — no subscriptions, no overlays, no timers, no allocations.
+**Production safety:** every entry point (`<WhyRN>`, `withWhyRN`, `useWhyRN`, `useRenderCount`) checks `__DEV__` at the top. In release builds the entire library is inert - no subscriptions, no overlays, no timers, no allocations.
 
 ---
 
@@ -316,10 +316,10 @@ cd example && bun install && bunx expo start --ios
 
 - [x] Only avoidable re-renders, with the parent to fix and the fix (0.3)
 - [x] Re-render count on the overlay (heatmap `×N`, 0.3)
-- [ ] Context name without `displayName` — resolve it from the Provider in the tree
+- [ ] Context name without `displayName` - resolve it from the Provider in the tree
 - [ ] State variable names instead of `state[0]` (optional Babel plugin)
 - [ ] FlatList / FlashList hints (`renderItem`, `keyExtractor`, `extraData`)
-- [ ] React Compiler awareness — skip hints it already handles
+- [ ] React Compiler awareness - skip hints it already handles
 - [ ] React Native DevTools panel
 - [ ] Per-component render timeline
 - [ ] Expo Snack playground

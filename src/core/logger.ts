@@ -25,9 +25,9 @@ function formatStateChange(change: StateChange): string {
   return `  ${change.hookName} changed${same}: ${truncate(change.prev)} → ${truncate(change.next)}`;
 }
 
-/** One block per re-render — used with report="all". */
+/** One block per re-render - used with report="all". */
 export function formatRenderEvent(event: RenderEvent): void {
-  const tag = event.avoidable ? ' — avoidable' : '';
+  const tag = event.avoidable ? ' - avoidable' : '';
   const lines: string[] = [`🔁 ${event.componentName} re-rendered (#${event.renderCount})${tag}`];
 
   for (const reason of event.reasons) {
@@ -91,7 +91,7 @@ function where(owner: string | undefined): string {
 /** Turn a reason into a short, actionable line. Identical lines are counted. */
 function causesOf(event: RenderEvent): string[] {
   if (event.follows) {
-    return [`only because ${event.follows} re-rendered — fix ${event.follows} first`];
+    return [`only because ${event.follows} re-rendered - fix ${event.follows} first`];
   }
 
   const causes: string[] = [];
@@ -108,14 +108,14 @@ function causesOf(event: RenderEvent): string[] {
         break;
       case 'state':
         for (const change of reason.stateChanges ?? []) {
-          causes.push(`${change.hookName} set to an equal value — keep the previous object`);
+          causes.push(`${change.hookName} set to an equal value - keep the previous object`);
         }
         break;
       case 'context':
-        causes.push(`${reason.detail} — useMemo the Provider value`);
+        causes.push(`${reason.detail} - useMemo the Provider value`);
         break;
       case 'hooks':
-        causes.push(`${reason.detail} — select primitives or use a shallow-equal selector`);
+        causes.push(`${reason.detail} - select primitives or use a shallow-equal selector`);
         break;
       case 'parent':
         break;
@@ -131,13 +131,13 @@ function causesOf(event: RenderEvent): string[] {
       : `, then React.memo(${event.componentName})`;
 
   if (functions.length > 0) {
-    causes.push(`${functions.length > 1 ? 'props' : 'prop'} ${list(functions)}: new function every render — useCallback${where(event.owner)}${memoHint}`);
+    causes.push(`${functions.length > 1 ? 'props' : 'prop'} ${list(functions)}: new function every render - useCallback${where(event.owner)}${memoHint}`);
   }
   if (objects.length > 0) {
-    causes.push(`${objects.length > 1 ? 'props' : 'prop'} ${list(objects)}: new object with the same content — useMemo${where(event.owner)}${functions.length > 0 ? '' : memoHint}`);
+    causes.push(`${objects.length > 1 ? 'props' : 'prop'} ${list(objects)}: new object with the same content - useMemo${where(event.owner)}${functions.length > 0 ? '' : memoHint}`);
   }
   if (propsOnly && functions.length === 0 && objects.length === 0) {
-    causes.push(event.memo ? 'props are equal' : `props are equal — wrap ${event.componentName} in React.memo`);
+    causes.push(event.memo ? 'props are equal' : `props are equal - wrap ${event.componentName} in React.memo`);
   }
 
   return causes;

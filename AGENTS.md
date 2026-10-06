@@ -10,7 +10,7 @@ React commits via `__REACT_DEVTOOLS_GLOBAL_HOOK__.onCommitFiberRoot`, diffs each
 re-rendered fiber against its `alternate` (props, hook state, context, external
 stores), measures host views with `measureInWindow`, and draws an overlay.
 
-## Invariants — do not break these
+## Invariants - do not break these
 
 - **Never replace or wrap user components.** No patching of `createElement`,
   `jsx`/`jsxDEV` or hooks, no wrapper `View`s. Earlier versions did that and it
@@ -18,7 +18,7 @@ stores), measures host views with `measureInWindow`, and draws an overlay.
   `child.type === Screen` checks in navigators.
 - **Every entry point is inert when `__DEV__` is false** (`IS_DEV` in
   `src/constants.ts`).
-- **No dynamic `require(variable)`** — Metro cannot bundle it.
+- **No dynamic `require(variable)`** - Metro cannot bundle it.
 - Stay compatible with React 18 and 19, Paper and Fabric. Only rely on fiber
   fields React DevTools relies on (see `src/core/fiber.ts`).
 - The overlay subtree is registered in `internalComponents` and never inspected,
@@ -28,7 +28,7 @@ stores), measures host views with `measureInWindow`, and draws an overlay.
   is avoidable when no prop changed by value (`isEquivalent` in `differ.ts`: deep,
   functions count as equal, class instances by reference, bounded depth/size),
   state changed only to an equal value, and no context or store pushed new
-  content. Never label a render avoidable when unsure — false positives are what
+  content. Never label a render avoidable when unsure - false positives are what
   made the old output spam. On top of that, the default `report: 'critical'`
   (`critical.ts`) only reports a component once its avoidable renders waste
   `criticalMs` (16) of `fiber.actualDuration` per second; children of a
