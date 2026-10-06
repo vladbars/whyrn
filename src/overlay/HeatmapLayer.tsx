@@ -1,9 +1,10 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import type { ComponentLayout, RenderEvent, WhyRNConfig } from '../types';
 import { overlayManager } from './OverlayManager';
 import { getHeatColor } from './Heatmap';
 import { reasonLabel } from './ReasonBadge';
+import { openEventSource } from './openSource';
 
 const WINDOW_MS = 5000;
 const TICK_MS = 250;
@@ -18,6 +19,7 @@ interface Cell {
   layout: ComponentLayout;
   stamps: number[];
   reason: string;
+  event: RenderEvent;
 }
 
 interface HeatmapLayerProps {
@@ -68,11 +70,13 @@ export function HeatmapLayer({ config, origin }: HeatmapLayerProps): React.React
         layout: withLayout.layout,
         stamps: [],
         reason: '',
+        event,
       };
 
       cell.stamps.push(event.timestamp);
       cell.layout = withLayout.layout;
       cell.reason = reasonLabel(event);
+      cell.event = event;
       cells.current.set(key, cell);
 
       if (cells.current.size > config.maxOverlays) {
@@ -121,8 +125,10 @@ export function HeatmapLayer({ config, origin }: HeatmapLayerProps): React.React
                 },
               ]}
             />
-            <View
-              pointerEvents="none"
+            <Pressable
+              disabled={!cell.event.source}
+              onPress={() => openEventSource(cell.event)}
+              hitSlop={6}
               style={[
                 styles.badge,
                 // Clamp in window coordinates: the container itself may sit anywhere.
@@ -133,7 +139,7 @@ export function HeatmapLayer({ config, origin }: HeatmapLayerProps): React.React
                 {cell.name} ×{count}
                 {age < REASON_MS && cell.reason ? ` · ${cell.reason}` : ''}
               </Text>
-            </View>
+            </Pressable>
           </React.Fragment>
         );
       })}

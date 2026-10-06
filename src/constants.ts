@@ -11,7 +11,7 @@ export const INTERNAL_EXCLUDE: RegExp[] = [
   /^Virtualized/,
   /^LogBox/,
   // Internals of popular libraries: their props are not yours to fix.
-  /^(SafeAreaProvider|SafeAreaProviderCompat|NavigationContainer|BaseNavigationContainer|NavigationContent|SceneView|ScreenStack|ScreenStackItem|ScreenContainer|InnerScreen|ScreenContentWrapper|ScreenStackHeaderConfig|ScreenStackHeaderSubview|DebugContainer|DelayedFreeze|Freeze|Suspender|MaybeScreen|MaybeScreenContainer|BottomTabBar|BottomTabItem|BottomTabView|TabBarIcon|HeaderContainer|HeaderBackground|GestureDetector|GestureHandlerRootView|NativeViewGestureHandler|Wrap|AnimatedComponent|FastImage|FastImageBase)$/,
+  /^(SafeAreaProvider|SafeAreaProviderCompat|NavigationContainer|BaseNavigationContainer|NavigationContent|NavigationContainerInner|EnsureSingleNavigator|FrameSizeProvider|FrameSizeListener|PreventRemoveProvider|StaticContainer|NavigationStateListenerProvider|SceneView|ScreenStack|ScreenStackItem|ScreenContainer|InnerScreen|ScreenContentWrapper|ScreenStackHeaderConfig|ScreenStackHeaderSubview|DebugContainer|DelayedFreeze|Freeze|Suspender|MaybeScreen|MaybeScreenContainer|BottomTabBar|BottomTabItem|BottomTabView|TabBarIcon|HeaderContainer|HeaderBackground|GestureDetector|GestureHandlerRootView|NativeViewGestureHandler|Wrap|AnimatedComponent|FastImage|FastImageBase)$/,
   /^Icon\(/,
   /^(View|Text|TextImpl|Image|ImageBackground|ScrollView|ScrollViewBase|ScrollViewStickyHeader|FlatList|SectionList|CellRenderer|Pressable|TouchableOpacity|TouchableHighlight|TouchableWithoutFeedback|TouchableNativeFeedback|TextInput|Switch|ActivityIndicator|RefreshControl|SafeAreaView|KeyboardAvoidingView|Modal|StatusBar|AppContainer|PressabilityDebugView|Anonymous)$/,
 ];

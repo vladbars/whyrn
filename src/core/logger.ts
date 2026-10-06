@@ -1,5 +1,7 @@
 import type { RenderEvent, PropChange, StateChange } from '../types';
 import { truncate } from '../utils';
+import { formatLocation, resolveSource } from './source';
+import type { SourceHint } from './source';
 
 const FLUSH_MS = 1000;
 
@@ -63,6 +65,7 @@ interface Summary {
   memo: boolean;
   /** Only renders because a reported component did. Listed after the root causes. */
   follows?: string;
+  source?: SourceHint;
   causes: Map<string, number>;
 }
 
@@ -169,17 +172,25 @@ function flush(): void {
   }
 
   if (fresh.length > 0) {
-    const total = fresh.reduce((sum, s) => sum + s.count, 0);
-    const lines = [`⚠️ WhyRN: ${total} avoidable re-render${total === 1 ? '' : 's'}`];
+    // Resolve where each problem is rendered (Metro symbolication), then print
+    // the block once. "at file:line:col" is clickable in VS Code / iTerm.
+    Promise.all(fresh.map((s) => (s.follows ? Promise.resolve(undefined) : resolveSource(s.source)))).then(
+      (locations) => {
+        const total = fresh.reduce((sum, s) => sum + s.count, 0);
+        const lines = [`⚠️ WhyRN: ${total} avoidable re-render${total === 1 ? '' : 's'}`];
 
-    for (const s of fresh) {
-      lines.push(`  ${describe(s)}`);
-      for (const [cause, n] of s.causes) {
-        lines.push(`    ${n > 1 ? `${n}× ` : ''}${cause}`);
+        fresh.forEach((s, i) => {
+          lines.push(`  ${describe(s)}`);
+          const location = locations[i];
+          if (location) lines.push(`    at ${formatLocation(location)}`);
+          for (const [cause, n] of s.causes) {
+            lines.push(`    ${n > 1 ? `${n}× ` : ''}${cause}`);
+          }
+        });
+
+        console.log(lines.join('\n'));
       }
-    }
-
-    console.log(lines.join('\n'));
+    );
   }
 
   const now = Date.now();
@@ -204,6 +215,7 @@ export function queueAvoidable(event: RenderEvent): void {
       owner: event.owner,
       memo: !!event.memo,
       follows: event.follows,
+      source: event.source,
       causes: new Map(),
     };
     pending.set(key, summary);

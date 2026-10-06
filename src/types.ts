@@ -50,6 +50,8 @@ export interface RenderEvent {
   memo?: boolean;
   /** Rendered only because this (already reported) component did. */
   follows?: string;
+  /** Where the component is rendered (dev only), resolved through Metro on demand. */
+  source?: import('./core/source').SourceHint;
   /** Render time of this component and its subtree in this commit (dev builds), ms. */
   durationMs?: number;
   /** Stable id of the component instance, to tell instances apart. */

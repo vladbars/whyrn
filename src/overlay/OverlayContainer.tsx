@@ -69,7 +69,7 @@ export function OverlayContainer({ config }: OverlayContainerProps): React.React
   }, []);
 
   return (
-    <View ref={containerRef} style={styles.container} pointerEvents="none" onLayout={onLayout}>
+    <View ref={containerRef} style={styles.container} pointerEvents="box-none" onLayout={onLayout}>
       {config.heatmap ? (
         <HeatmapLayer config={config} origin={origin} />
       ) : (

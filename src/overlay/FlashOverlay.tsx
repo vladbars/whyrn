@@ -38,7 +38,7 @@ export function FlashOverlay({
   // a readable badge; only the inner view draws the border.
   return (
     <Animated.View
-      pointerEvents="none"
+      pointerEvents="box-none"
       style={[
         styles.container,
         {
@@ -51,6 +51,7 @@ export function FlashOverlay({
       ]}
     >
       <View
+        pointerEvents="none"
         style={[styles.border, { width: layout.width, height: layout.height, borderColor: color }]}
       />
       <ReasonBadge entry={entry} />

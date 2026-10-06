@@ -4,6 +4,8 @@ import { getConfig, shouldTrack, boundaryComponents, internalComponents, getForc
 import { diffProps, buildReasons, isAvoidable, isEquivalent } from './differ';
 import { recordRender } from './tracker';
 import { checkCritical } from './critical';
+import { getSourceHint } from './source';
+import type { SourceHint } from './source';
 import { overlayManager } from '../overlay/OverlayManager';
 import {
   ClassComponent,
@@ -91,6 +93,9 @@ interface PendingReport {
   instanceId: number;
   /** Renders / wasted ms this report stands for (a critical burst carries its window). */
   count: number;
+  /** withWhyRN component or report="all": always reported. */
+  forced?: boolean;
+  source?: SourceHint;
   wastedMs?: number;
   hostNodes: unknown[];
 }
@@ -107,11 +112,15 @@ function getInstanceId(fiber: Fiber): number {
   return id;
 }
 
+function finiteMs(value: unknown): number | undefined {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0 ? value : undefined;
+}
+
 /** Self + subtree render time of this commit. Only recorded in profiling mode (dev with the DevTools hook). */
 function getDuration(fiber: Fiber): number | undefined {
-  const d = (fiber as Fiber & { actualDuration?: number }).actualDuration;
-  return typeof d === 'number' && Number.isFinite(d) && d >= 0 ? d : undefined;
+  return finiteMs((fiber as Fiber & { actualDuration?: number }).actualDuration);
 }
+
 
 function handleCommit(root: FiberRoot | undefined): void {
   const rootFiber = root?.current;
@@ -121,9 +130,21 @@ function handleCommit(root: FiberRoot | undefined): void {
   const watching = !!config?.enabled;
 
   const reports: PendingReport[] = [];
-  // Reported fiber → the root of its chain, so children of a flagged component
-  // are shown as consequences instead of separate problems.
-  const reportedRoots = new Map<Fiber, string>();
+
+  // Avoidable renders of this commit, linked into chains: a component that
+  // rendered avoidably because its owner did belongs to the owner's chain.
+  interface Candidate {
+    report: PendingReport;
+    fiber: Fiber;
+    root: Fiber;
+  }
+  const candidates: Candidate[] = [];
+  const chainRoot = new Map<Fiber, Fiber>();
+  // Tracked components that rendered for a legitimate reason. Their subtrees
+  // are not the fault of an avoidable ancestor and are subtracted from its cost.
+  const legit: Fiber[] = [];
+  const report = config?.report ?? 'critical';
+
   const stack: Array<[Fiber, boolean]> = [[rootFiber, false]];
 
   while (stack.length > 0) {
@@ -143,45 +164,42 @@ function handleCommit(root: FiberRoot | undefined): void {
 
       if (forcedName !== undefined || (watching && inside && shouldTrack(name, config!))) {
         const { reasons, avoidable } = computeReasons(fiber, prev, config?.trackHooks ?? true);
-        const reportAll = forcedName !== undefined || config?.report === 'all';
-        const ownerInfo = getOwner(fiber);
-        const owner = ownerInfo.name;
-        const ownerFiber = ownerInfo.fiber;
-        const follows = ownerFiber
-          ? reportedRoots.get(ownerFiber) ?? (ownerFiber.alternate ? reportedRoots.get(ownerFiber.alternate) : undefined)
-          : undefined;
+        const reportAll = forcedName !== undefined || report === 'all';
+        const { name: owner, fiber: ownerFiber } = getOwner(fiber);
         const durationMs = getDuration(fiber);
-        let count = 1;
-        let wastedMs = avoidable ? durationMs : undefined;
-        let include = reportAll || (avoidable && config?.report === 'avoidable');
 
-        if (!include && avoidable && (config?.report ?? 'critical') === 'critical') {
-          const result = checkCritical(
-            `${name}\u0000${owner ?? ''}`,
-            durationMs,
-            config?.criticalMs ?? 16,
-            Date.now()
-          );
-          include = result.critical;
-          count = result.count;
-          wastedMs = result.ms;
+        const entry: PendingReport = {
+          name,
+          reasons,
+          avoidable,
+          owner,
+          memo: isMemoFiber(fiber),
+          durationMs,
+          instanceId: getInstanceId(fiber),
+          count: 1,
+          hostNodes: [],
+        };
+
+        if (avoidable) {
+          const parentRoot = ownerFiber
+            ? chainRoot.get(ownerFiber) ?? (ownerFiber.alternate ? chainRoot.get(ownerFiber.alternate) : undefined)
+            : undefined;
+          const rootOfChain = parentRoot ?? fiber;
+          chainRoot.set(fiber, rootOfChain);
+          candidates.push({ report: entry, fiber, root: rootOfChain });
+        } else {
+          legit.push(fiber);
         }
 
-        if (include) {
-          reports.push({
-            name,
-            reasons,
-            avoidable,
-            owner,
-            memo: isMemoFiber(fiber),
-            follows,
-            durationMs,
-            instanceId: getInstanceId(fiber),
-            count,
-            wastedMs,
-            hostNodes: follows ? [] : findHostFibers(fiber).map((host) => host.stateNode),
-          });
-          reportedRoots.set(fiber, follows ?? name);
+        if (!avoidable && reportAll) {
+          entry.hostNodes = findHostFibers(fiber).map((host) => host.stateNode);
+          reports.push(entry);
+        }
+
+        if (avoidable && reportAll) {
+          // Forced components and report="all" never wait for the chain decision.
+          const c = candidates[candidates.length - 1];
+          c.report.forced = true;
         }
       }
     }
@@ -194,6 +212,79 @@ function handleCommit(root: FiberRoot | undefined): void {
     }
   }
 
+  // Decide per chain. Its cost is the render time it caused: the root's whole
+  // subtree time, minus subtrees that rendered for other reasons (legitimate
+  // renders, other chains) — those are not this chain's fault.
+  const chains = new Map<Fiber, Candidate[]>();
+  const memberOf = new Map<Fiber, Candidate>();
+  for (const c of candidates) {
+    const list = chains.get(c.root);
+    if (list) list.push(c);
+    else chains.set(c.root, [c]);
+    memberOf.set(c.fiber, c);
+  }
+
+  const lookup = <T,>(map: Map<Fiber, T>, f: Fiber): T | undefined =>
+    map.get(f) ?? (f.alternate ? map.get(f.alternate) : undefined);
+  const legitSet = new Set(legit);
+  const isLegit = (f: Fiber) => legitSet.has(f) || (!!f.alternate && legitSet.has(f.alternate));
+
+  const subtract = new Map<Fiber, number>();
+  const foreign: Array<{ fiber: Fiber; chain?: Fiber }> = [
+    ...legit.map((fiber) => ({ fiber })),
+    ...[...chains.keys()].map((fiber) => ({ fiber, chain: fiber })),
+  ];
+  for (const { fiber, chain } of foreign) {
+    const ms = getDuration(fiber);
+    if (ms === undefined) continue;
+    for (let node = fiber.return; node; node = node.return) {
+      if (isLegit(node)) break; // inside a legitimate subtree that is already excluded
+      const owner = lookup(memberOf, node);
+      if (owner) {
+        if (owner.root !== chain) subtract.set(owner.root, (subtract.get(owner.root) ?? 0) + ms);
+        break;
+      }
+    }
+  }
+
+  const now = Date.now();
+  for (const [rootOfChain, members] of chains) {
+    const head = members[0];
+    const total = getDuration(rootOfChain);
+    const cost = total !== undefined ? Math.max(0, total - (subtract.get(rootOfChain) ?? 0)) : undefined;
+
+    let include = report === 'avoidable' || report === 'all';
+    let headCount = 1;
+    let headMs = cost;
+
+    if (!include && report === 'critical') {
+      const result = checkCritical(
+        `${head.report.name}\u0000${head.report.owner ?? ''}`,
+        cost,
+        config?.criticalMs ?? 16,
+        now
+      );
+      include = result.critical;
+      headCount = result.count;
+      headMs = result.ms;
+    }
+
+    for (const m of members) {
+      if (!include && !m.report.forced) continue;
+      const isHead = m.fiber === rootOfChain;
+      if (isHead) {
+        m.report.count = include ? headCount : 1;
+        m.report.wastedMs = headMs;
+        m.report.hostNodes = findHostFibers(m.fiber).map((host) => host.stateNode);
+        m.report.source = getSourceHint(m.fiber);
+      } else {
+        // Its time is already part of the chain's cost.
+        m.report.follows = head.report.name;
+      }
+      reports.push(m.report);
+    }
+  }
+
   if (reports.length === 0) return;
 
   const events = reports.map((report) => ({
@@ -202,6 +293,7 @@ function handleCommit(root: FiberRoot | undefined): void {
       owner: report.owner,
       memo: report.memo,
       follows: report.follows,
+      source: report.source,
       durationMs: report.durationMs,
       instanceId: report.instanceId,
       count: report.count,

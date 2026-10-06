@@ -30,6 +30,7 @@ interface RenderMeta {
   owner?: string;
   memo?: boolean;
   follows?: string;
+  source?: import('./source').SourceHint;
   durationMs?: number;
   instanceId?: number;
   count?: number;
@@ -59,6 +60,7 @@ export function recordRender(
     owner: meta.owner,
     memo: meta.memo,
     follows: meta.follows,
+    source: meta.source,
     durationMs: meta.durationMs,
     instanceId: meta.instanceId,
     count: meta.count,

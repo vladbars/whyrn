@@ -39,8 +39,9 @@ React DevTools can already **highlight** every component that renders, and its P
 ```
 ⚠️ WhyRN: 402 avoidable re-renders
   HeavyList ×2 · 33 ms wasted · rendered by Screen
+    at /Users/you/app/src/screens/Screen.tsx:148:7
     2× prop "items": new object with the same content — useMemo in Screen, then React.memo(HeavyList)
-  Row ×400 · 200 instances · 25 ms wasted · rendered by HeavyList
+  Row ×400 · 200 instances · rendered by HeavyList
     400× only because HeavyList re-rendered — fix HeavyList first
 ```
 
@@ -52,6 +53,7 @@ No DevTools window, no profiling session: it runs in your dev build and writes t
 
 - 🎯 **Only what costs frames** — avoidable re-renders that waste ≥ 16 ms/s (configurable); real changes and cheap renders stay quiet
 - 🔗 **Root cause first** — children that render only because a flagged parent did are listed as consequences, not separate problems
+- 🧭 **Jump to the code** — every problem links to the JSX that renders it (`at src/…/Screen.tsx:148:7`, clickable in VS Code / iTerm); tap a badge on the device to open that line in your editor
 - 🔍 **Reference vs value** — deep comparison tells a new object with the same content from a real change; inline callbacks are called out
 - 🛠️ **Says where to fix it** — names the parent that creates the unstable prop, and whether `useCallback`, `useMemo` or `React.memo` is the fix
 - 🧘 **Doesn't flood Metro** — details once per problem, then one short line every 10 s
@@ -104,12 +106,13 @@ By default (`report="critical"`), only avoidable re-renders that waste real rend
 ```
 ⚠️ WhyRN: 402 avoidable re-renders
   HeavyList ×2 · 33 ms wasted · rendered by Screen
+    at /Users/you/app/src/screens/Screen.tsx:148:7
     2× prop "items": new object with the same content — useMemo in Screen, then React.memo(HeavyList)
-  Row ×400 · 200 instances · 25 ms wasted · rendered by HeavyList
+  Row ×400 · 200 instances · rendered by HeavyList
     400× only because HeavyList re-rendered — fix HeavyList first
 ```
 
-`×N` counts renders across all instances; `200 instances` says how many different components that is. `only because X re-rendered` marks consequences: fix `X` and they go away.
+`×N` counts renders across all instances; `200 instances` says how many different components that is. `only because X re-rendered` marks consequences: fix `X` and they go away. `at file:line:col` is the JSX in the parent that renders the component — where the unstable prop is created. Locations come from React's dev element stacks, symbolicated by Metro; tapping a badge opens the same line through Metro's `open-stack-frame` (set `REACT_EDITOR` if the wrong editor opens).
 
 A problem already explained is not repeated; it is counted and reported as one line:
 

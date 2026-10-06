@@ -77,8 +77,9 @@ summary per second, naming the parent that creates the unstable prop:
 ```
 ⚠️ WhyRN: 402 avoidable re-renders
   HeavyList ×2 · 33 ms wasted · rendered by Screen
+    at /Users/you/app/src/screens/Screen.tsx:148:7
     2× prop "items": new object with the same content — useMemo in Screen, then React.memo(HeavyList)
-  Row ×400 · 200 instances · 25 ms wasted · rendered by HeavyList
+  Row ×400 · 200 instances · rendered by HeavyList
     400× only because HeavyList re-rendered — fix HeavyList first
 ```
 
@@ -88,6 +89,8 @@ summary per second, naming the parent that creates the unstable prop:
 - `only because X re-rendered — fix X first` is a consequence. Fix `X`; do not
   add `React.memo` to the children first.
 - Sort by `ms wasted`, not by `×N`.
+- `at /path/File.tsx:line:col` is the JSX that renders the component — open
+  that file and line; the unstable prop is created right there.
 
 A problem is explained once; later occurrences only bump a counter line:
 

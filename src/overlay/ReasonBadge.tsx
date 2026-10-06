@@ -1,5 +1,6 @@
 import React from 'react';
-import { Platform, StyleSheet, Text, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text } from 'react-native';
+import { openEventSource } from './openSource';
 import type { OverlayEntry, RenderEvent, RenderReason } from '../types';
 import { truncate } from '../utils';
 
@@ -50,11 +51,16 @@ export function reasonLabel(event: RenderEvent): string {
 /** Rendered inside FlashOverlay, so it fades together with the border. */
 export function ReasonBadge({ entry }: ReasonBadgeProps): React.ReactElement {
   return (
-    <View pointerEvents="none" style={styles.badge}>
+    <Pressable
+      style={styles.badge}
+      disabled={!entry.event.source}
+      onPress={() => openEventSource(entry.event)}
+      hitSlop={6}
+    >
       <Text style={styles.text} numberOfLines={1}>
         {entry.event.componentName} — {reasonLabel(entry.event)}
       </Text>
-    </View>
+    </Pressable>
   );
 }
 
