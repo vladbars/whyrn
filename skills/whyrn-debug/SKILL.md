@@ -1,11 +1,11 @@
 ---
 name: whyrn-debug
-description: Find out why React Native components re-render and fix the unnecessary renders, using the whyrn library. Installs and wires up <WhyRN> if missing, reads the re-render reasons from Metro logs (props by reference vs value, useState/useReducer, context, external stores, parent renders), and applies targeted fixes such as useMemo, useCallback, React.memo, splitting context or narrowing store selectors. Use when a React Native or Expo screen feels slow or janky, a FlatList stutters, a component "renders too often", or the user asks why something re-renders.
+description: Find out why React Native components re-render and fix the unnecessary renders, using the whyrn.dev library. Installs and wires up <WhyRN> if missing, reads the re-render reasons from Metro logs (props by reference vs value, useState/useReducer, context, external stores, parent renders), and applies targeted fixes such as useMemo, useCallback, React.memo, splitting context or narrowing store selectors. Use when a React Native or Expo screen feels slow or janky, a FlatList stutters, a component "renders too often", or the user asks why something re-renders.
 ---
 
 # Debugging React Native re-renders with WhyRN
 
-`whyrn` observes React commits and, for every component that re-rendered,
+`whyrn.dev` observes React commits and, for every component that re-rendered,
 reports **why**: which prop changed (and whether only its reference changed),
 which `useState`/`useReducer` value changed, which context value changed, or
 that the parent simply rendered. It prints that to Metro and draws a flashing
@@ -20,10 +20,10 @@ the cause the log names, then measure again.
   WhyRN needs React 18+ and React Native 0.70+.
 - Detect the package manager from the lockfile (`bun.lock`, `yarn.lock`,
   `pnpm-lock.yaml`, `package-lock.json`) and use that one.
-- If `whyrn` is not a dependency, install it **as a dev dependency**:
+- If `whyrn.dev` is not a dependency, install it **as a dev dependency**:
 
   ```bash
-  npm install -D whyrn     # or: yarn add -D / pnpm add -D / bun add -d
+  npm install -D whyrn.dev     # or: yarn add -D / pnpm add -D / bun add -d
   ```
 
   No native module, no Babel plugin, no pod install. Works in Expo Go.
@@ -34,7 +34,7 @@ Find the root component: `App.tsx` for bare apps and classic Expo,
 `app/_layout.tsx` for expo-router. Wrap what it renders:
 
 ```tsx
-import { WhyRN } from 'whyrn';
+import { WhyRN } from 'whyrn.dev';
 
 export default function App() {
   return (
@@ -86,7 +86,7 @@ node "$WHYRN_DEBUG_SKILL_DIR/scripts/summarize-log.mjs" metro.log
 ```
 
 Resolve `WHYRN_DEBUG_SKILL_DIR` as the directory containing this `SKILL.md`
-(in an app it is usually `node_modules/whyrn/skills/whyrn-debug`). The
+(in an app it is usually `node_modules/whyrn.dev/skills/whyrn-debug`). The
 script also reads from stdin.
 
 ## 4. Fix what the log names

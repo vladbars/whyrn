@@ -9,9 +9,9 @@
 </p>
 
 <p align="center">
-  <a href="https://www.npmjs.com/package/whyrn"><img src="https://img.shields.io/npm/v/whyrn.svg" alt="npm version" /></a>
-  <a href="https://www.npmjs.com/package/whyrn"><img src="https://img.shields.io/npm/dm/whyrn.svg" alt="npm downloads" /></a>
-  <a href="https://github.com/vladbars/whyrn/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/whyrn.svg" alt="license" /></a>
+  <a href="https://www.npmjs.com/package/whyrn.dev"><img src="https://img.shields.io/npm/v/whyrn.dev.svg" alt="npm version" /></a>
+  <a href="https://www.npmjs.com/package/whyrn.dev"><img src="https://img.shields.io/npm/dm/whyrn.dev.svg" alt="npm downloads" /></a>
+  <a href="https://github.com/vladbars/whyrn/blob/main/LICENSE"><img src="https://img.shields.io/npm/l/whyrn.dev.svg" alt="license" /></a>
 </p>
 
 ---
@@ -58,13 +58,11 @@ It highlights re-renders **on screen**, shows the **exact reason** — which pro
 Install as a **dev dependency** — whyrn is a debug tool and has no place in production bundles:
 
 ```bash
-npm install -D whyrn
+npm install -D whyrn.dev
 ```
 
-> Previously published as `whyrn.dev`. That package is deprecated — switch the dependency and the import to `whyrn`.
-
 ```bash
-yarn add -D whyrn
+yarn add -D whyrn.dev
 ```
 
 ---
@@ -72,7 +70,7 @@ yarn add -D whyrn
 ## Usage
 
 ```tsx
-import { WhyRN } from 'whyrn';
+import { WhyRN } from 'whyrn.dev';
 
 export default function App() {
   return (
@@ -112,7 +110,7 @@ And on screen — every re-rendered component flashes, and the badge says why:
 Don't want to track everything? Use the HOC:
 
 ```tsx
-import { withWhyRN } from 'whyrn';
+import { withWhyRN } from 'whyrn.dev';
 
 function UserCard({ user }) {
   return <Text>{user.name}</Text>;
@@ -124,7 +122,7 @@ export default withWhyRN(UserCard);
 Or the hook, for full control:
 
 ```tsx
-import { useWhyRN } from 'whyrn';
+import { useWhyRN } from 'whyrn.dev';
 
 function UserCard(props) {
   const reasons = useWhyRN('UserCard', props);
@@ -200,8 +198,8 @@ Expose it once from your app root and commit the links:
 
 ```bash
 mkdir -p .claude/skills .agents/skills
-ln -s ../../node_modules/whyrn/skills/whyrn-debug .claude/skills/whyrn-debug
-ln -s ../../node_modules/whyrn/skills/whyrn-debug .agents/skills/whyrn-debug
+ln -s ../../node_modules/whyrn.dev/skills/whyrn-debug .claude/skills/whyrn-debug
+ln -s ../../node_modules/whyrn.dev/skills/whyrn-debug .agents/skills/whyrn-debug
 ```
 
 Then ask — the agent picks the skill up from a plain request, or invoke it explicitly:
@@ -214,7 +212,7 @@ $whyrn-debug The product list stutters while scrolling. Find out why and fix it.
 The skill includes a log summarizer that ranks components by re-render count and groups their reasons:
 
 ```bash
-node node_modules/whyrn/skills/whyrn-debug/scripts/summarize-log.mjs metro.log
+node node_modules/whyrn.dev/skills/whyrn-debug/scripts/summarize-log.mjs metro.log
 ```
 
 ```
