@@ -39,7 +39,7 @@ React DevTools can already **highlight** every component that renders, and its P
 ```
 ⚠️ WhyRN: 402 avoidable re-renders
   HeavyList ×2 · 33 ms wasted · rendered by Screen
-    at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7
+    at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7?whyrn
     2× prop "items": new object with the same content - useMemo in Screen, then React.memo(HeavyList)
   Row ×400 · 200 instances · rendered by HeavyList
     400× only because HeavyList re-rendered - fix HeavyList first
@@ -106,7 +106,7 @@ By default (`report="critical"`), only avoidable re-renders that waste real rend
 ```
 ⚠️ WhyRN: 402 avoidable re-renders
   HeavyList ×2 · 33 ms wasted · rendered by Screen
-    at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7
+    at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7?whyrn
     2× prop "items": new object with the same content - useMemo in Screen, then React.memo(HeavyList)
   Row ×400 · 200 instances · rendered by HeavyList
     400× only because HeavyList re-rendered - fix HeavyList first
@@ -119,7 +119,7 @@ A problem already explained is not repeated in full; repeats are counted and sum
 ```
 ⚠️ WhyRN: still avoidable (same causes as above)
   HeavyList ×10 · 140 ms wasted · rendered by Screen
-    at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7
+    at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7?whyrn
 ```
 
 On screen, each avoidable re-render flashes with a short badge (`new fn: onPress`, `same value: user`, `equal props`).

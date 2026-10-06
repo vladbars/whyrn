@@ -77,7 +77,7 @@ summary per second, naming the parent that creates the unstable prop:
 ```
 ⚠️ WhyRN: 402 avoidable re-renders
   HeavyList ×2 · 33 ms wasted · rendered by Screen
-    at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7
+    at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7?whyrn
     2× prop "items": new object with the same content - useMemo in Screen, then React.memo(HeavyList)
   Row ×400 · 200 instances · rendered by HeavyList
     400× only because HeavyList re-rendered - fix HeavyList first
@@ -99,7 +99,7 @@ A problem is explained once; later occurrences are summarized every 10 s (count,
 ```
 ⚠️ WhyRN: still avoidable (same causes as above)
   HeavyList ×10 · 140 ms wasted · rendered by Screen
-    at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7
+    at vscode://file/Users/you/app/src/screens/Screen.tsx:148:7?whyrn
 ```
 
 If a screen is slow but the summary is empty:

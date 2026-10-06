@@ -280,6 +280,7 @@ function handleCommit(root: FiberRoot | undefined): void {
       } else {
         // Its time is already part of the chain's cost.
         m.report.follows = head.report.name;
+        m.report.source = getSourceHint(m.fiber);
       }
       reports.push(m.report);
     }
@@ -451,7 +452,7 @@ function diffContexts(prev: Fiber, next: Fiber): RenderReason[] {
 
   while (prevDep && nextDep) {
     if (!Object.is(prevDep.memoizedValue, nextDep.memoizedValue)) {
-      const name = nextDep.context?.displayName ?? 'Context';
+      const name = nextDep.context?.displayName ?? 'Context (set its displayName to see which)';
       const same = isEquivalent(prevDep.memoizedValue, nextDep.memoizedValue);
       reasons.push({
         type: 'context',

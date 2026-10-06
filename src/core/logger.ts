@@ -182,7 +182,7 @@ function flush(): void {
   if (fresh.length > 0) {
     // Resolve where each problem is rendered (Metro symbolication), then print
     // the block once. "at file:line:col" is clickable in VS Code / iTerm.
-    Promise.all(fresh.map((s) => (s.follows ? Promise.resolve(undefined) : resolveSource(s.source)))).then(
+    Promise.all(fresh.map((s) => resolveSource(s.source))).then(
       (locations) => {
         const total = fresh.reduce((sum, s) => sum + s.count, 0);
         const lines = [`⚠️ WhyRN: ${total} avoidable re-render${total === 1 ? '' : 's'}`];
@@ -211,14 +211,14 @@ function flush(): void {
     lastQuietLog = now;
 
     const shown = top.slice(0, 6);
-    Promise.all(shown.map((s) => (s.follows ? Promise.resolve(undefined) : resolveSource(s.source)))).then(
+    Promise.all(shown.map((s) => resolveSource(s.source))).then(
       (locations) => {
         const lines = ['⚠️ WhyRN: still avoidable (same causes as above)'];
         shown.forEach((s, i) => {
           lines.push(`  ${describe(s)}`);
           const location = locations[i];
+          if (location) lines.push(`    at ${formatLocation(location, getConfig()?.editor)}`);
           if (s.follows) lines.push(`    only because ${s.follows} re-rendered`);
-          else if (location) lines.push(`    at ${formatLocation(location, getConfig()?.editor)}`);
         });
         if (top.length > shown.length) lines.push(`  … +${top.length - shown.length} more`);
         console.log(lines.join('\n'));

@@ -20,6 +20,12 @@ export interface SourceHint {
   stack?: string;
   /** React 18: @babel/plugin-transform-react-jsx-source location. */
   location?: SourceLocation;
+  /**
+   * Used when the JSX site is library code (e.g. a screen rendered by
+   * react-navigation): the component's own first child, created inside its
+   * render, points into the component's file.
+   */
+  fallback?: SourceHint;
 }
 
 interface StackFrame {
@@ -30,6 +36,14 @@ interface StackFrame {
 }
 
 export function getSourceHint(fiber: unknown): SourceHint | undefined {
+  const own = getElementHint(fiber);
+  const child = (fiber as { child?: unknown } | null)?.child;
+  const fallback = child ? getElementHint(child) : undefined;
+  if (!own) return fallback;
+  return fallback ? { ...own, fallback } : own;
+}
+
+function getElementHint(fiber: unknown): SourceHint | undefined {
   const f = fiber as {
     _debugStack?: { stack?: string } | null;
     _debugSource?: { fileName?: string; lineNumber?: number; columnNumber?: number } | null;
@@ -83,6 +97,10 @@ const cache = new Map<string, Promise<SourceLocation | undefined>>();
 /** Resolve a hint to an original file location. Never throws; undefined when unknown. */
 export function resolveSource(hint: SourceHint | undefined): Promise<SourceLocation | undefined> {
   if (!hint) return Promise.resolve(undefined);
+  if (hint.fallback) {
+    const { fallback, ...own } = hint;
+    return resolveSource(own).then((location) => location ?? resolveSource(fallback));
+  }
   if (hint.location) return Promise.resolve(hint.location);
   if (!hint.stack) return Promise.resolve(undefined);
 
@@ -129,8 +147,11 @@ function editorUrl(editor: EditorOption, location: SourceLocation): string | und
     case 'vscode':
     case 'cursor':
     case 'windsurf':
+      // The trailing query keeps DevTools from treating ":line:col" as its own
+      // position and dropping it; the editor ignores the query.
+      return `${editor}://file${encodeURI(path)}:${position}?whyrn`;
     case 'zed':
-      return `${editor}://file${encodeURI(path)}:${position}`;
+      return `zed://file${encodeURI(path)}:${position}`;
     case 'webstorm':
     case 'idea':
       return `${editor}://open?file=${encodeURIComponent(file)}&line=${lineNumber}`;
